@@ -20,9 +20,21 @@ if not all([DATASET_JSON, RAW_DATA_DIR]):
 IMG_DIR = os.path.join(RAW_DATA_DIR, "images") 
 SEG_DIR = os.path.join(RAW_DATA_DIR, "segmentations")
 
-# Ruta volátil de I/O rápido. Busca en .env, si no está, usa el default de jumbito.
-TMP_OUT_DIR = os.getenv("TMP_PREP_DIR", "/tmp/jdeferrari/rexgroundingct_preprocessed")
-os.makedirs(TMP_OUT_DIR, exist_ok=True)
+TMP_PREP_DIR = os.getenv("TMP_PREP_DIR")
+DATA_PREP_DIR = os.getenv("DATA_PREP_DIR")
+
+if TMP_PREP_DIR:
+    # Modo Jumbito: La variable volátil existe. Se usa para I/O rápido.
+    OUT_DIR = TMP_PREP_DIR
+    print(f"[INFO] Modo Jumbito detectado. Escribiendo tensores en espacio volátil: {OUT_DIR}")
+elif DATA_PREP_DIR:
+    # Modo ih-condor: TMP_PREP_DIR fue eliminada del .env, se escribe directo al SSD del investigador.
+    OUT_DIR = DATA_PREP_DIR
+    print(f"[INFO] Modo ih-condor detectado. Escribiendo tensores en almacenamiento persistente: {OUT_DIR}")
+else:
+    raise ValueError("Error de configuración: No se detectó TMP_PREP_DIR ni DATA_PREP_DIR en el .env local.")
+
+os.makedirs(OUT_DIR, exist_ok=True)
 
 def main():
     # 1. Lectura estructurada del dataset.json
@@ -69,21 +81,21 @@ def main():
     # 4. Transformaciones de guardado (Desacopladas del pipeline en memoria)
     # resample=False asegura que no se intente revertir el Spacingd
     save_img = SaveImage(
-        output_dir=TMP_OUT_DIR, 
+        output_dir=OUT_DIR, 
         output_postfix="ct", 
         output_ext=".nii.gz", 
         resample=False,
         separate_folder=False
     )
     save_seg = SaveImage(
-        output_dir=TMP_OUT_DIR, 
+        output_dir=OUT_DIR, 
         output_postfix="seg", 
         output_ext=".nii.gz", 
         resample=False,
         separate_folder=False
     )
 
-    print(f"Iniciando preprocesamiento batch de {len(data_dicts)} volúmenes hacia {TMP_OUT_DIR}...")
+    print(f"Iniciando preprocesamiento batch de {len(data_dicts)} volúmenes hacia {OUT_DIR}...")
     
     # 5. Ejecución y validación
     for batch in tqdm(dataloader, desc="Preprocesando scans", unit="scan"):

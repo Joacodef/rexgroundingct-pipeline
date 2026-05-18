@@ -32,6 +32,9 @@ voxtell_env/
 venv/
 env/
 
+# Scripts bash utilizados para ejecutar en SLURM
+bash_scripts/
+
 # =========================
 # 3. Caché y Logs
 # =========================
