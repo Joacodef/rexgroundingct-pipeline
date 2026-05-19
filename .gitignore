@@ -2,6 +2,7 @@
 # 1. Data and Models (CRITICAL)
 # =========================
 # We ignore heavy folders to avoid GitHub blocks
+data/
 data/raw/
 data/preprocessed/
 data/predictions/

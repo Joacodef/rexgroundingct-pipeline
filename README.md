@@ -47,8 +47,16 @@ uv venv .venv-voxtell --python 3.10
 ```
 
 3. **Install frozen dependencies**:
+
+> ⚠️ **Note:** `uv` only searches the first index that contains a given package by default. The `--index-strategy unsafe-best-match` flag is required so that packages like `torch` are resolved from the PyTorch index while the rest fall back to PyPI. The `--no-verify-hashes` flag is needed because the PyTorch wheel index does not publish hash metadata.
+
 ```bash
-uv pip install -r requirements/voxtell.txt --env-file .env
+uv pip install \
+  --no-verify-hashes \
+  --extra-index-url https://download.pytorch.org/whl/cu126 \
+  --index-strategy unsafe-best-match \
+  -r requirements/base.txt \
+  -r requirements/voxtell.txt
 ```
 
 ## 🚀 Execution Pipeline
