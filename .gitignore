@@ -1,13 +1,13 @@
 # =========================
-# 1. Datos y Modelos (CRÍTICO)
+# 1. Data and Models (CRITICAL)
 # =========================
-# Ignoramos las carpetas pesadas para evitar bloqueos de GitHub
+# We ignore heavy folders to avoid GitHub blocks
 data/raw/
 data/preprocessed/
 data/predictions/
 models/
 
-# Extensiones pesadas por si acaso se escapan de sus carpetas
+# Heavy extensions just in case they escape their folders
 *.nii
 *.nii.gz
 *.npy
@@ -18,32 +18,32 @@ models/
 *.safetensors
 
 # =========================
-# 2. Entornos y Credenciales
+# 2. Environments and Credentials
 # =========================
-# Tu archivo de variables de entorno (NUNCA se sube a GitHub)
+# Your environment variables file (NEVER uploaded to GitHub)
 .env
 
-# Archivos de configuración de IDEs (opcional, pero comúnmente ignorados)
+# IDE configuration files (optional, but commonly ignored)
 *.code-workspace
 
-# Entornos virtuales (conda, venv)
+# Virtual environments (conda, venv)
 voxtell_env/
 .venv/
 venv/
 env/
 
-# Scripts bash utilizados para ejecutar en SLURM
+# Bash scripts used to run in SLURM
 bash_scripts/
 
 # =========================
-# 3. Caché y Logs
+# 3. Cache and Logs
 # =========================
 __pycache__/
 *.py[cod]
 *$py.class
 .ipynb_checkpoints/
 
-# Logs de entrenamiento (Weights & Biases, TensorBoard, etc.)
+# Training logs (Weights & Biases, TensorBoard, etc.)
 wandb/
 logs/
 checkpoints/

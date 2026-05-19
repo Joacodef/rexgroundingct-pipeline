@@ -5,13 +5,13 @@ from dotenv import load_dotenv
 from monai.transforms import Compose, LoadImaged, Orientationd, Spacingd, SaveImage, EnsureChannelFirstd
 from monai.data import Dataset, DataLoader, decollate_batch
 
-# Cargar variables de entorno desde el archivo .env
+# Load environment variables from .env file
 load_dotenv()
 
-# Rutas dinámicas
+# Dynamic paths
 DATASET_JSON = os.getenv("DATASET_JSON")
 
-# Nota: Verifica que las carpetas internas coincidan con 'images' y 'segmentations'
+# Note: Verify that the internal folders match 'images' and 'segmentations'
 IMG_DIR = os.getenv("IMG_RAW_DIR") 
 SEG_DIR = os.getenv("SEG_RAW_DIR")
 
@@ -19,29 +19,29 @@ TMP_PREP_DIR = os.getenv("TMP_PREP_DIR")
 DATA_PREP_DIR = os.getenv("DATA_PREP_DIR")
 
 if TMP_PREP_DIR:
-    # Modo Jumbito: La variable volátil existe. Se usa para I/O rápido.
+    # Jumbito mode: Volatile variable exists. Used for fast I/O.
     OUT_DIR = TMP_PREP_DIR
-    print(f"[INFO] Modo Jumbito detectado. Escribiendo tensores en espacio volátil: {OUT_DIR}")
+    print(f"[INFO] Jumbito mode detected. Writing tensors to volatile space: {OUT_DIR}")
 elif DATA_PREP_DIR:
-    # Modo ih-condor: TMP_PREP_DIR fue eliminada del .env, se escribe directo al SSD del investigador.
+    # ih-condor mode: TMP_PREP_DIR was removed from .env, writing directly to researcher's SSD.
     OUT_DIR = DATA_PREP_DIR
-    print(f"[INFO] Modo ih-condor detectado. Escribiendo tensores en almacenamiento persistente: {OUT_DIR}")
+    print(f"[INFO] ih-condor mode detected. Writing tensors to persistent storage: {OUT_DIR}")
 else:
-    raise ValueError("Error de configuración: No se detectó TMP_PREP_DIR ni DATA_PREP_DIR en el .env local.")
+    raise ValueError("Configuration error: Neither TMP_PREP_DIR nor DATA_PREP_DIR detected in local .env.")
 
 os.makedirs(OUT_DIR, exist_ok=True)
 
 def main():
-    # 1. Lectura estructurada del dataset.json
+    # 1. Structured read of dataset.json
     with open(DATASET_JSON, 'r') as f:
         metadata = json.load(f)
     
     train_entries = metadata.get("train", [])
     
-    # 2. Mapeo de rutas y extracción de num_findings (Dimensión F)
+    # 2. Path mapping and num_findings extraction (Dimension F)
     data_dicts = []
     for entry in train_entries:
-        # En caso de que un volumen no tenga findings, evitamos que falle el len()
+        # In case a volume has no findings, prevent len() from failing
         num_f = len(entry.get("findings", {})) 
         
         data_dicts.append({
@@ -50,16 +50,16 @@ def main():
             "num_findings": num_f
         })
 
-    # 3. Pipeline de transformaciones espaciales
-    # LoadImaged con ensure_channel_first=True es crítico:
-    # - Para el CT (3D), añade la dimensión de canal (1, H, W, D).
-    # - Para la máscara (4D), Nibabel lee (H, W, D, F) y MONAI lo permuta a (F, H, W, D).
+    # 3. Spatial transformations pipeline
+    # LoadImaged with ensure_channel_first=True is critical:
+    # - For CT (3D), adds channel dimension (1, H, W, D).
+    # - For mask (4D), Nibabel reads (H, W, D, F) and MONAI permutes it to (F, H, W, D).
     preprocessing_pipeline = Compose([
-        # Carga cruda sin reordenamiento automático
+        # Raw load without automatic reordering
         LoadImaged(keys=["image", "label"], reader="NibabelReader"),
         
-        # Agrega el canal [1, H, W, D] SOLO a la imagen CT. 
-        # La máscara ya tiene su F en el índice 0.
+        # Add channel [1, H, W, D] ONLY to the CT image. 
+        # The mask already has its F at index 0.
         EnsureChannelFirstd(keys=["image"]), 
         
         Orientationd(keys=["image", "label"], axcodes="RAS"),
@@ -73,8 +73,8 @@ def main():
     dataset = Dataset(data=data_dicts, transform=preprocessing_pipeline)
     dataloader = DataLoader(dataset, batch_size=1, num_workers=4)
 
-    # 4. Transformaciones de guardado (Desacopladas del pipeline en memoria)
-    # resample=False asegura que no se intente revertir el Spacingd
+    # 4. Save transformations (Decoupled from memory pipeline)
+    # resample=False ensures no attempt to revert Spacingd
     save_img = SaveImage(
         output_dir=OUT_DIR, 
         output_postfix="ct", 
@@ -90,18 +90,18 @@ def main():
         separate_folder=False
     )
 
-    print(f"Iniciando preprocesamiento batch de {len(data_dicts)} volúmenes hacia {OUT_DIR}...")
+    print(f"Starting batch preprocessing of {len(data_dicts)} volumes to {OUT_DIR}...")
     
-    # 5. Ejecución y validación
-    for batch in tqdm(dataloader, desc="Preprocesando scans", unit="scan"):
+    # 5. Execution and validation
+    for batch in tqdm(dataloader, desc="Preprocessing scans", unit="scan"):
         for data in decollate_batch(batch):
-            f_esperado = data["num_findings"]
+            f_expected = data["num_findings"]
             f_real = data["label"].shape[0]
             
-            # Validación dura de la dimensionalidad (F, H, W, D) para compatibilidad con VoxTell
-            assert f_real == f_esperado, (
-                f"Error dimensional en {data['image'].meta['filename_or_obj']}: "
-                f"dataset.json declara {f_esperado} findings, pero la máscara cargada tiene {f_real} canales."
+            # Hard validation of dimensionality (F, H, W, D) for VoxTell compatibility
+            assert f_real == f_expected, (
+                f"Dimensionality error in {data['image'].meta['filename_or_obj']}: "
+                f"dataset.json declares {f_expected} findings, but loaded mask has {f_real} channels."
             )
             
             save_img(data["image"])

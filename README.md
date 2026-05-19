@@ -1,90 +1,80 @@
-# Pipeline para ReXGroundingCT Challenge 2026
+# Pipeline for ReXGroundingCT Challenge 2026
 
-Repositorio para la participación en el ReXGrounding Challenge @ MICCAI 2026. El objetivo principal es la segmentación 3D de hallazgos radiológicos a partir de descripciones de texto libre (free-text finding grounding).
+Repository for participating in the ReXGrounding Challenge @ MICCAI 2026. The main objective is the 3D segmentation of radiological findings from free-text descriptions (free-text finding grounding).
 
-Este pipeline implementa adaptaciones metodológicas avanzadas (Mean Teacher, MPR Loss, SPOCO) para lidiar con el problema de **anotaciones parciales** en el dataset de entrenamiento.
+This pipeline implements advanced methodological adaptations (Mean Teacher, MPR Loss, SPOCO) to handle the problem of **partial annotations** in the training dataset.
 
-## 📂 Estructura del Proyecto
+## 📂 Project Structure
 
-La arquitectura del repositorio está diseñada para aislar el entorno, los datos pesados y la configuración de ejecución.
+The repository architecture is designed to isolate the environment, heavy data, and execution configuration.
 
 ```text
 REX_PROJECT/
-├── data/                       # Almacenamiento de datos (volúmenes 4D y metadatos)
-│   ├── predictions/            # Outputs de inferencia (máscaras 4D en formato F,H,W,D)
-│   ├── preprocessed/           # Dataset estandarizado (RAS, 1.5mm isotrópico)
-│   ├── raw/                    # Volúmenes NIfTI originales
-│   └── dataset.json            # Metadatos, particiones (train/val/test) y prompts
-├── models/                     # Checkpoints y cachés
-│   ├── .cache/                 # Caché de HuggingFace (ej. Text Encoders)
-│   ├── voxtell_v1.0/           # Checkpoint base de VoxTell
-│   ├── voxtell_v1.1/           # Checkpoint iterativo (fine-tuned)
-│   └── config.json             # Configuración de hiperparámetros
-├── notebooks/                  # Jupyter notebooks para EDA, sanity checks y visualizaciones
-├── requirements/               # Arquitectura modular de dependencias
-│   ├── base.txt                # Infraestructura, manipulación volumétrica (MONAI) y monitoreo
-│   └── voxtell.txt             # Dependencias específicas del modelo, compilación CUDA y PyTorch
-├── scripts/                    # Pipeline ejecutable
-│   ├── data_prep/              # Pipeline de preprocesamiento (orientación, resampleo, clipping)
-│   └── voxtell/                # Loops de inferencia, evaluación baseline y fine-tuning
-├── .env                        # Variables de entorno y manejo seguro de rutas relativas
-├── .gitignore                  # Exclusión estricta de entornos virtuales, NIfTIs y binarios
-└── workspace.code-workspace    # Configuración de entorno de desarrollo (ej. VS Code)
-
+├── data/                       # Data storage (4D volumes and metadata)
+│   ├── predictions/            # Inference outputs (4D masks in F,H,W,D format)
+│   ├── preprocessed/           # Standardized dataset (RAS, 1.5mm isotropic)
+│   ├── raw/                    # Original NIfTI volumes
+│   └── dataset.json            # Metadata, partitions (train/val/test) and prompts
+├── models/                     # Checkpoints and caches
+│   ├── .cache/                 # HuggingFace cache (e.g. Text Encoders)
+│   ├── voxtell_v1.0/           # VoxTell base checkpoint
+│   ├── voxtell_v1.1/           # Iterative checkpoint (fine-tuned)
+│   └── config.json             # Hyperparameter configuration
+├── notebooks/                  # Jupyter notebooks for EDA, sanity checks and visualizations
+├── requirements/               # Modular dependency architecture
+│   ├── base.txt                # Infrastructure, volumetric manipulation (MONAI) and monitoring
+│   └── voxtell.txt             # Model-specific dependencies, CUDA and PyTorch compilation
+├── scripts/                    # Executable pipeline
+│   ├── data_prep/              # Preprocessing pipeline (orientation, resampling, clipping)
+│   └── voxtell/                # Inference loops, baseline evaluation and fine-tuning
+├── .env                        # Environment variables and secure relative path handling
+├── .gitignore                  # Strict exclusion of virtual environments, NIfTIs and binaries
+└── workspace.code-workspace    # Development environment configuration (e.g. VS Code)
 ```
 
-## ⚙️ Configuración del Entorno (`uv`)
+## ⚙️ Environment Configuration (`uv`)
 
-Este proyecto utiliza `uv` para la gestión aislada de paquetes y dependencias, garantizando la reproducibilidad matemática de las métricas en cualquier servidor o clúster.
+This project uses `uv` for isolated package and dependency management, ensuring mathematical reproducibility of metrics on any server or cluster.
 
-1. **Instalar `uv**`:
+1. **Install `uv`**:
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
 ```
 
-
-2. **Crear el entorno virtual aislado (VoxTell)**:
+2. **Create the isolated virtual environment (VoxTell)**:
 ```bash
 uv venv .venv-voxtell --python 3.10
-
 ```
 
-
-3. **Instalar dependencias congeladas**:
+3. **Install frozen dependencies**:
 ```bash
 uv pip install -r requirements/voxtell.txt --env-file .env
-
 ```
 
+## 🚀 Execution Pipeline
 
+### 1. Preprocessing (Format Assurance)
 
-## 🚀 Pipeline de Ejecución
-
-### 1. Preprocesamiento (Asegurar Formato)
-
-Estandariza los volúmenes crudos al espacio de coordenadas esperado por el modelo.
+Standardizes raw volumes to the coordinate space expected by the model.
 
 ```bash
 ./.venv-voxtell/bin/python scripts/data_prep/preprocess.py
-
 ```
 
-### 2. Inferencia Batch (Baseline)
+### 2. Batch Inference (Baseline)
 
-Ejecución del modelo zero-shot sobre el validation set.
+Zero-shot model execution on the validation set.
 
-> 💡 **Recomendación:** Para inferencias o entrenamientos sobre datasets completos en servidores remotos, se recomienda utilizar multiplexores de terminal (`screen` o `tmux`).
+> 💡 **Recommendation:** For inference or training on full datasets on remote servers, it is highly recommended to use terminal multiplexers (`screen` or `tmux`).
 
 ```bash
-# Ejecución utilizando el binario aislado del entorno
+# Execution using the environment's isolated binary
 CUDA_VISIBLE_DEVICES=0 ./.venv-voxtell/bin/python scripts/voxtell/run_baseline.py
-
 ```
 
-### 3. Evaluación Estricta
+### 3. Strict Evaluation
 
-Cálculo de métricas contra las anotaciones exhaustivas. (Target baseline: Dice global ~0.285).
+Calculation of metrics against exhaustive annotations. (Target baseline: Global Dice ~0.285).
 
 ```bash
 ./.venv-voxtell/bin/python rexrank_eval.py \
@@ -92,10 +82,9 @@ Cálculo de métricas contra las anotaciones exhaustivas. (Target baseline: Dice
   --pred_dir data/predictions \
   --output_json data/eval_results.json \
   --dataset_json data/dataset.json
-
 ```
 
-## 📝 Consideraciones Operativas
+## 📝 Operational Considerations
 
-* **Manejo de I/O:** El procesamiento de NIfTIs 4D es altamente intensivo en lectura/escritura. Se recomienda encarecidamente utilizar sistemas de archivos rápidos (SSD/NVMe) o ramdisks (`/tmp` en entornos Linux) para interactuar con las carpetas de datos durante el *runtime*.
-* **Entrenamiento Distribuido:** Si se ejecuta DDP (Distributed Data Parallel) en clústeres compartidos, es vital asignar explícitamente puertos libres (ej. `MASTER_PORT=29501`) en los scripts de lanzamiento para evitar colisiones de red con otros usuarios.
+* **I/O Handling:** 4D NIfTI processing is highly read/write intensive. It is strongly recommended to use fast file systems (SSD/NVMe) or ramdisks (`/tmp` in Linux environments) to interact with data folders during *runtime*.
+* **Distributed Training:** If running DDP (Distributed Data Parallel) on shared clusters, it is vital to explicitly assign free ports (e.g. `MASTER_PORT=29501`) in the launch scripts to avoid network collisions with other users.
