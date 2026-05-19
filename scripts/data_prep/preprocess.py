@@ -10,15 +10,10 @@ load_dotenv()
 
 # Rutas dinámicas
 DATASET_JSON = os.getenv("DATASET_JSON")
-RAW_DATA_DIR = os.getenv("DATA_RAW_DIR")
-
-# Validación de seguridad
-if not all([DATASET_JSON, RAW_DATA_DIR]):
-    raise ValueError("Error: Faltan variables de entorno (DATASET_JSON o DATA_RAW_DIR). Verifica tu .env.")
 
 # Nota: Verifica que las carpetas internas coincidan con 'images' y 'segmentations'
-IMG_DIR = os.path.join(RAW_DATA_DIR, "images") 
-SEG_DIR = os.path.join(RAW_DATA_DIR, "segmentations")
+IMG_DIR = os.getenv("IMG_RAW_DIR") 
+SEG_DIR = os.getenv("SEG_RAW_DIR")
 
 TMP_PREP_DIR = os.getenv("TMP_PREP_DIR")
 DATA_PREP_DIR = os.getenv("DATA_PREP_DIR")
