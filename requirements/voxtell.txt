@@ -3,3 +3,4 @@ torch==2.8.0+cu126
 monai
 nibabel
 python-dotenv
+voxtell
