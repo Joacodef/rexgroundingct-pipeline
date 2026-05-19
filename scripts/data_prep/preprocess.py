@@ -71,7 +71,7 @@ def main():
     ])
 
     dataset = Dataset(data=data_dicts, transform=preprocessing_pipeline)
-    dataloader = DataLoader(dataset, batch_size=1, num_workers=4)
+    dataloader = DataLoader(dataset, batch_size=1, num_workers=0)
 
     # 4. Save transformations (Decoupled from memory pipeline)
     # resample=False ensures no attempt to revert Spacingd

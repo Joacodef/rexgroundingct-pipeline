@@ -42,6 +42,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .ipynb_checkpoints/
+slurm-out
 
 # Training logs (Weights & Biases, TensorBoard, etc.)
 wandb/
