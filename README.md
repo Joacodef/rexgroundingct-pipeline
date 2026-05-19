@@ -26,24 +26,30 @@ REX_PROJECT/
 │   └── voxtell.txt             # Model-specific dependencies, CUDA and PyTorch compilation
 ├── scripts/                    # Executable pipeline
 │   ├── data_prep/              # Preprocessing pipeline (orientation, resampling, clipping)
-│   └── voxtell/                # Inference loops, baseline evaluation and fine-tuning
+│   └── voxtell/                
+│       └── voxtell_inference.py # Batch Zero-Shot inference and 4D stacking
 ├── .env                        # Environment variables and secure relative path handling
 ├── .gitignore                  # Strict exclusion of virtual environments, NIfTIs and binaries
 └── workspace.code-workspace    # Development environment configuration (e.g. VS Code)
+
 ```
 
 ## ⚙️ Environment Configuration (`uv`)
 
 This project uses `uv` for isolated package and dependency management, ensuring mathematical reproducibility of metrics on any server or cluster.
 
-1. **Install `uv`**:
+1. **Install `uv**`:
+
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
+
 ```
 
 2. **Create the isolated virtual environment (VoxTell)**:
+
 ```bash
 uv venv .venv-voxtell --python 3.10
+
 ```
 
 3. **Install frozen dependencies**:
@@ -53,34 +59,54 @@ uv venv .venv-voxtell --python 3.10
 ```bash
 uv pip install \
   --no-verify-hashes \
-  --extra-index-url https://download.pytorch.org/whl/cu126 \
+  --extra-index-url [https://download.pytorch.org/whl/cu126](https://download.pytorch.org/whl/cu126) \
   --index-strategy unsafe-best-match \
   -r requirements/base.txt \
   -r requirements/voxtell.txt
+
 ```
 
 ## 🚀 Execution Pipeline
 
-### 1. Preprocessing (Format Assurance)
+### 1. Environment Setup (.env)
+
+The pipeline relies strictly on environment variables for path injection to ensure portability. Ensure your `.env` file at the root of the repository contains the following structure before execution:
+
+```env
+# Base paths
+MODEL_DIR=/absolute/path/to/models/voxtell_v1.0
+DATA_PREP_DIR=/absolute/path/to/data/preprocessed
+DATA_PRED_DIR=/absolute/path/to/data/predictions
+DATASET_JSON=/absolute/path/to/data/dataset.json
+
+# GPU Isolation (Defaults to 0)
+CUDA_VISIBLE_DEVICES=0
+DEFAULT_DEVICE=cuda:0
+
+```
+
+### 2. Preprocessing (Format Assurance)
 
 Standardizes raw volumes to the coordinate space expected by the model.
 
 ```bash
 ./.venv-voxtell/bin/python scripts/data_prep/preprocess.py
+
 ```
 
-### 2. Batch Inference (Baseline)
+### 3. Batch Inference (Baseline)
 
-Zero-shot model execution on the validation set.
+Zero-shot model execution on the validation set. Generates strictly aligned 4D NIfTI masks `(F, H, W, D)`.
 
 > 💡 **Recommendation:** For inference or training on full datasets on remote servers, it is highly recommended to use terminal multiplexers (`screen` or `tmux`).
 
 ```bash
 # Execution using the environment's isolated binary
-CUDA_VISIBLE_DEVICES=0 ./.venv-voxtell/bin/python scripts/voxtell/run_baseline.py
+./.venv-voxtell/bin/python scripts/voxtell/voxtell_inference.py
+
 ```
 
-### 3. Strict Evaluation
+### 4. Strict Evaluation
 
 Calculation of metrics against exhaustive annotations. (Target baseline: Global Dice ~0.285).
 
@@ -90,6 +116,7 @@ Calculation of metrics against exhaustive annotations. (Target baseline: Global 
   --pred_dir data/predictions \
   --output_json data/eval_results.json \
   --dataset_json data/dataset.json
+
 ```
 
 ## 📝 Operational Considerations

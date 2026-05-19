@@ -1,14 +1,33 @@
+"""
+VoxTell Batch Zero-Shot Inference Pipeline for ReXGroundingCT.
+
+This script performs batch inference using the VoxTell model on preprocessed 
+3D CT scans, generating 4D segmentation masks (F, H, W, D) guided by free-text 
+prompts. It ensures strict positional alignment with the ground truth JSON 
+to maintain compatibility with the official `rexrank_eval.py` script.
+
+Input/Output Contract:
+- Inputs: Configuration relies exclusively on environment variables loaded via 
+  `.env` (MODEL_DIR, DATA_PREP_DIR, DATA_PRED_DIR, DATASET_JSON). No CLI arguments.
+- Outputs: 4D NIfTI files saved in `DATA_PRED_DIR` preserving the original affine matrix.
+"""
+
+
 import os
+import json
 import torch
 import numpy as np
+import nibabel as nib
+from tqdm import tqdm
 from huggingface_hub import snapshot_download
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
-# 1. Strictly isolate GPU 0 (Node policy)
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# 1. Strictly isolate GPU (Node policy) MUST happen before VoxTell/nnU-Net imports
+# Falls back to "0" if not explicitly set in the environment or .env
+os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
 
 # Import VoxTell dependencies after setting environment variables
 from voxtell.inference.predictor import VoxTellPredictor
@@ -19,60 +38,74 @@ def main():
     download_dir = os.getenv("MODEL_DIR")
     data_prep_dir = os.getenv("DATA_PREP_DIR")
     output_dir = os.getenv("DATA_PRED_DIR")
+    dataset_json = os.getenv("DATASET_JSON")
 
     # Security validation for critical environment variables
-    if not all([download_dir, data_prep_dir, output_dir]):
-        raise ValueError("Error: Missing environment variables in script. Check your .env file.")
+    if not all([download_dir, data_prep_dir, output_dir, dataset_json]):
+        raise ValueError("Error: Missing environment variables in .env (MODEL_DIR, DATA_PREP_DIR, DATA_PRED_DIR, DATASET_JSON).")
 
-    # 2. Device Configuration
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f"Selected device: {device}")
-
-    # We will download the paper version (v1.0)
-    MODEL_NAME = "voxtell_v1.0" 
+    # Prepare directories
+    os.makedirs(output_dir, exist_ok=True)
     os.makedirs(download_dir, exist_ok=True)
 
-    # 3. Get Weights
-    print(f"Validating/Downloading {MODEL_NAME} weights from Hugging Face...")
-    model_path = snapshot_download(
+    # Device Configuration
+    device = torch.device(os.getenv("DEFAULT_DEVICE", "cuda:0") if torch.cuda.is_available() else "cpu")
+    
+    # We will download the paper version (v1.0)
+    model_name = "voxtell_v1.0" 
+    
+    # Get Weights from Hugging Face
+    snapshot_download(
         repo_id="mrokuss/VoxTell", 
-        allow_patterns=[f"{MODEL_NAME}/*", "*.json"], 
+        allow_patterns=[f"{model_name}/*", "*.json"], 
         local_dir=download_dir
     )
-    voxtell_weights_dir = os.path.join(download_dir, MODEL_NAME)
+    voxtell_weights_dir = os.path.join(download_dir, model_name)
 
-    # 4. Initialize Predictor 
-    # (The Qwen3-Embedding-4B text encoder will be downloaded/loaded automatically here)
-    print("Initializing VoxTellPredictor...")
-    predictor = VoxTellPredictor(
-        model_dir=voxtell_weights_dir,
-        device=device,
-    )
-
-    # 5. Data Reading and Reorientation (Critical for VoxTell)
-    # Dynamic path construction using environment variable
-    image_path = os.path.join(data_prep_dir, "train_6_a_2_ct.nii.gz") 
-    print(f"Loading and reorienting volume to RAS: {image_path}")
+    # Initialize Predictor
+    predictor = VoxTellPredictor(model_dir=voxtell_weights_dir, device=device)
+    
+    # Data Reading and Reorientation (Critical for VoxTell)
     reader = NibabelIOWithReorient()
-    img, img_properties = reader.read_images([image_path])
 
-    # 6. Define Prompts (List F)
-    text_prompts = ["liver", "right kidney", "left kidney", "spleen", "pancreas"]
-    print(f"Prompts to evaluate: {text_prompts}")
+    # Load Ground Truth metadata
+    with open(dataset_json, 'r') as f:
+        val_metadata = json.load(f)
 
-    # 7. Inference
-    print("Running Zero-Shot inference...")
-    # Output: (num_prompts, x, y, z) -> Equivalent to (F, H, W, D)
-    voxtell_seg = predictor.predict_single_image(img, text_prompts)
-    
-    print(f"Success. Output tensor shape (F, H, W, D): {voxtell_seg.shape}")
-
-    # 8. Save final tensor
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, "pred_0001.npy")
-    
-    np.save(output_path, voxtell_seg.astype(np.uint8))
-    print(f"Saved tensor ready for evaluation at: {output_path}")
+    # Batch Inference Loop
+    for scan_id, scan_data in tqdm(val_metadata.items(), desc="Evaluating Scans"):
+        nifti_path = os.path.join(data_prep_dir, f"{scan_id}.nii.gz")
+        
+        if not os.path.exists(nifti_path):
+            continue
+            
+        # Load and reorient volume to RAS
+        img, img_properties = reader.read_images([nifti_path])
+        
+        # Recover original affine for spatial matching with GT
+        affine = img_properties.get('affine')
+        if affine is None:
+            affine = nib.load(nifti_path).affine
+        
+        findings_list = scan_data.get('findings', [])
+        if not findings_list:
+            continue
+            
+        # Extract prompts matching the exact positional index of the JSON (Dimension F)
+        text_prompts = [finding['text'] for finding in findings_list]
+        
+        # Inference
+        with torch.no_grad():
+            # Output: (num_prompts, x, y, z) -> Equivalent to (F, H, W, D)
+            voxtell_seg = predictor.predict_single_image(img, text_prompts)
+            
+        # Cast to uint8 to minimize memory footprint and I/O bottleneck in /tmp
+        pred_4d = voxtell_seg.astype(np.uint8)
+        
+        # Save as NIfTI
+        out_nii = nib.Nifti1Image(pred_4d, affine)
+        out_path = os.path.join(output_dir, f"{scan_id}.nii.gz")
+        nib.save(out_nii, out_path)
 
 if __name__ == "__main__":
     main()
