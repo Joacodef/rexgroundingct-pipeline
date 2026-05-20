@@ -122,4 +122,5 @@ Calculation of metrics against exhaustive annotations. (Target baseline: Global 
 ## 📝 Operational Considerations
 
 * **I/O Handling:** 4D NIfTI processing is highly read/write intensive. It is strongly recommended to use fast file systems (SSD/NVMe) or ramdisks (`/tmp` in Linux environments) to interact with data folders during *runtime*.
-* **Distributed Training:** If running DDP (Distributed Data Parallel) on shared clusters, it is vital to explicitly assign free ports (e.g. `MASTER_PORT=29501`) in the launch scripts to avoid network collisions with other users.
+* **Execution Environments:** For inference or training on Jumbito, use terminal multiplexers (`screen` or `tmux`). For SLURM-based clusters, wrap the Python calls in `sbatch` submission scripts and utilize node-local scratch directories (`$SLURM_TMPDIR`).
+* **Distributed Training:** If running DDP on shared clusters, it is vital to explicitly assign free ports (e.g. `MASTER_PORT=$((RANDOM % 10000 + 20000))`) in the launch scripts to avoid network collisions with other users.

@@ -8,13 +8,15 @@ to maintain compatibility with the official `rexrank_eval.py` script.
 
 Input/Output Contract:
 - Inputs: Configuration relies exclusively on environment variables loaded via 
-  `.env` (MODEL_DIR, DATA_PREP_DIR, DATA_PRED_DIR, DATASET_JSON). No CLI arguments.
+  `.env` (MODEL_DIR, DATA_PREP_DIR, DATA_PRED_DIR, DATASET_JSON). Optional 
+  `--split` CLI argument is available to target specific dataset partitions.
 - Outputs: 4D NIfTI files saved in `DATA_PRED_DIR` preserving the original affine matrix.
 """
 
 
 import os
 import json
+import argparse
 import torch
 import numpy as np
 import nibabel as nib
@@ -34,6 +36,12 @@ from voxtell.inference.predictor import VoxTellPredictor
 from nnunetv2.imageio.nibabel_reader_writer import NibabelIOWithReorient
 
 def main():
+    # Parse CLI arguments for split selection
+    parser = argparse.ArgumentParser(description="VoxTell Batch Zero-Shot Inference")
+    parser.add_argument("--split", type=str, default="val", choices=["train", "val", "test"], 
+                        help="Dataset split to evaluate (train, val, test)")
+    args = parser.parse_args()
+
     # Inject paths from .env file
     download_dir = os.getenv("MODEL_DIR")
     data_prep_dir = os.getenv("DATA_PREP_DIR")
@@ -70,13 +78,26 @@ def main():
 
     # Load Ground Truth metadata
     with open(dataset_json, 'r') as f:
-        val_metadata = json.load(f)
+        metadata = json.load(f)
+        
+    entries = metadata.get(args.split, [])
+    if not entries:
+        print(f"[WARNING] No cases found for split '{args.split}'. Check dataset.json structure.")
+        return
+
+    missing_files_count = 0
 
     # Batch Inference Loop
-    for scan_id, scan_data in tqdm(val_metadata.items(), desc="Evaluating Scans"):
+    for entry in tqdm(entries, desc=f"Evaluating {args.split} Scans"):
+        scan_id = entry.get("name", "").replace(".nii.gz", "")
+        if not scan_id:
+            continue
+            
         nifti_path = os.path.join(data_prep_dir, f"{scan_id}.nii.gz")
         
         if not os.path.exists(nifti_path):
+            tqdm.write(f"[WARNING] Preprocessed file not found: {nifti_path}. Skipping.")
+            missing_files_count += 1
             continue
             
         # Load and reorient volume to RAS
@@ -87,7 +108,7 @@ def main():
         if affine is None:
             affine = nib.load(nifti_path).affine
         
-        findings_list = scan_data.get('findings', [])
+        findings_list = entry.get('findings', [])
         if not findings_list:
             continue
             
@@ -106,6 +127,9 @@ def main():
         out_nii = nib.Nifti1Image(pred_4d, affine)
         out_path = os.path.join(output_dir, f"{scan_id}.nii.gz")
         nib.save(out_nii, out_path)
+
+    if missing_files_count > 0:
+        print(f"\n[INFO] Inference completed. Skipped {missing_files_count} missing files. Make sure to run the preprocessing script for the '{args.split}' split.")
 
 if __name__ == "__main__":
     main()

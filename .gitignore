@@ -24,6 +24,10 @@ models/
 # Your environment variables file (NEVER uploaded to GitHub)
 .env
 
+# The context folder and gemini instructions
+.context
+GEMINI_INSTRUCTIONS.txt
+
 # IDE configuration files (optional, but commonly ignored)
 *.code-workspace
 
