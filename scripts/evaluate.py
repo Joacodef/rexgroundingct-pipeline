@@ -31,7 +31,7 @@ def compute_dice(pred_mask, gt_mask):
     return 2. * intersection / union
 
 def main():
-    load_dotenv()
+    load_dotenv(override=True)
     parser = argparse.ArgumentParser(description="Evaluate 4D predictions for ReXGroundingCT")
     
     # Try TMP_PREP_DIR first, then DATA_PREP_DIR

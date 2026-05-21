@@ -3,6 +3,7 @@
 # =========================
 # We ignore heavy folders to avoid GitHub blocks
 data/
+data/*
 data/raw/
 data/preprocessed/
 data/predictions/
@@ -55,3 +56,6 @@ logs/
 checkpoints/
 nohup.out
 screenlog.0
+
+
+docs/

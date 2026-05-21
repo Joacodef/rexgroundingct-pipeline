@@ -13,7 +13,6 @@ Input/Output Contract:
 - Outputs: 4D NIfTI files saved in `DATA_PRED_DIR` preserving the original affine matrix.
 """
 
-
 import os
 import json
 import argparse
@@ -27,13 +26,11 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv(override=True)
 
-# 1. Strictly isolate GPU (Node policy) MUST happen before VoxTell/nnU-Net imports
-# Falls back to "0" if not explicitly set in the environment or .env
+# 1. Strictly isolate GPU (Node policy) MUST happen before VoxTell imports
 os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
 
 # Import VoxTell dependencies after setting environment variables
 from voxtell.inference.predictor import VoxTellPredictor
-from nnunetv2.imageio.nibabel_reader_writer import NibabelIOWithReorient
 
 def main():
     # Parse CLI arguments for split selection
@@ -74,9 +71,6 @@ def main():
 
     # Initialize Predictor
     predictor = VoxTellPredictor(model_dir=voxtell_weights_dir, device=device)
-    
-    # Data Reading and Reorientation (Critical for VoxTell)
-    reader = NibabelIOWithReorient()
 
     # Load Ground Truth metadata
     with open(dataset_json, 'r') as f:
@@ -102,13 +96,10 @@ def main():
             missing_files_count += 1
             continue
             
-        # Load and reorient volume to RAS
-        img, img_properties = reader.read_images([nifti_path])
-        
-        # Recover original affine for spatial matching with GT
-        affine = img_properties.get('affine')
-        if affine is None:
-            affine = nib.load(nifti_path).affine
+        # Load NIfTI directly using standard Nibabel to keep the standardized RAS orientation
+        nii_obj = nib.load(nifti_path)
+        img = nii_obj.get_fdata(dtype=np.float32)
+        affine = nii_obj.affine
         
         findings = entry.get('findings', {})
         if not findings:
@@ -130,17 +121,11 @@ def main():
         
         # Inference
         with torch.no_grad():
-            # Output: (num_prompts, x, y, z) -> Equivalent to (F, H, W, D)
-            # Note: nnU-Net internally returns (F, Z, X, Y) and resampled to its target spacing.
-            voxtell_seg = predictor.predict_single_image(img, text_prompts)
+            # Input image is passed directly in RAS orientation (X, Y, Z)
+            # Output: (num_prompts, X, Y, Z) in the same RAS space, matching the GT exactly
+            pred_4d = predictor.predict_single_image(img, text_prompts)
             
-        # 1. Revert axis order from (F, Z, X, Y) to (F, X, Y, Z)
-        if voxtell_seg.ndim == 4:
-            pred_4d = np.moveaxis(voxtell_seg, 1, -1)
-        else:
-            pred_4d = voxtell_seg
-            
-        # Cast to uint8 to minimize memory footprint and I/O bottleneck in /tmp
+        # Cast to uint8 to minimize memory footprint and I/O bottleneck
         pred_4d = pred_4d.astype(np.uint8)
         
         # Save as NIfTI preserving the preprocessed space affine

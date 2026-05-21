@@ -28,7 +28,6 @@ def test_missing_env_vars_raises_error():
 @patch.dict(os.environ, {}, clear=True)
 @patch("scripts.voxtell.voxtell_inference.snapshot_download")
 @patch("scripts.voxtell.voxtell_inference.VoxTellPredictor")
-@patch("scripts.voxtell.voxtell_inference.NibabelIOWithReorient")
 @patch("scripts.voxtell.voxtell_inference.nib")
 @patch("builtins.open")
 @patch("scripts.voxtell.voxtell_inference.os.path.exists")
@@ -36,7 +35,6 @@ def test_successful_inference_loop_and_4d_stacking(
     mock_exists, 
     mock_open, 
     mock_nib, 
-    mock_reader_class, 
     mock_predictor_class, 
     mock_snapshot,
     mock_env_vars
@@ -52,7 +50,10 @@ def test_successful_inference_loop_and_4d_stacking(
         "val": [
             {
                 "name": "case_001.nii.gz",
-                "findings": ["finding A", "finding B"]
+                "findings": {
+                    "0": "finding A",
+                    "1": "finding B"
+                }
             }
         ]
     }
@@ -62,11 +63,13 @@ def test_successful_inference_loop_and_4d_stacking(
     mock_file.read.return_value = json.dumps(dummy_json_data)
     mock_open.return_value.__enter__.return_value = mock_file
 
-    # 2. Configure NIfTI Reading Mocks (nnU-Net)
-    mock_reader_instance = mock_reader_class.return_value
-    dummy_img = np.zeros((1, 32, 32, 32))  # Dummy input tensor
+    # 2. Configure NIfTI Reading Mocks (Nibabel)
+    mock_nii_obj = MagicMock()
+    dummy_img = np.zeros((32, 32, 32))  # Dummy input tensor in RAS orientation
     dummy_affine = np.eye(4)
-    mock_reader_instance.read_images.return_value = (dummy_img, {'affine': dummy_affine})
+    mock_nii_obj.get_fdata.return_value = dummy_img
+    mock_nii_obj.affine = dummy_affine
+    mock_nib.load.return_value = mock_nii_obj
 
     # 3. Configure Model Mocks (VoxTell)
     mock_predictor_instance = mock_predictor_class.return_value
@@ -79,7 +82,7 @@ def test_successful_inference_loop_and_4d_stacking(
     # Control flow assertions
     mock_snapshot.assert_called_once()
     mock_predictor_class.assert_called_once()
-    mock_reader_instance.read_images.assert_called_once_with(["/tmp/dummy_prep/case_001_ct.nii.gz"])
+    mock_nib.load.assert_called_once_with("/tmp/dummy_prep/case_001_ct.nii.gz")
     
     # Check that prompts were passed in the exact JSON order
     mock_predictor_instance.predict_single_image.assert_called_once_with(
