@@ -34,10 +34,9 @@ def main():
     load_dotenv(override=True)
     parser = argparse.ArgumentParser(description="Evaluate 4D predictions for ReXGroundingCT")
     
-    # Try TMP_PREP_DIR first, then DATA_PREP_DIR
-    default_gt_dir = os.getenv("TMP_PREP_DIR") or os.getenv("DATA_PREP_DIR")
+    default_gt_dir = os.getenv("SEG_RAW_DIR")
     
-    parser.add_argument("--gt_dir", type=str, default=default_gt_dir, help="Directory containing preprocessed GT masks")
+    parser.add_argument("--gt_dir", type=str, default=default_gt_dir, help="Directory containing raw GT masks")
     parser.add_argument("--pred_dir", type=str, default=os.getenv("DATA_PRED_DIR"), help="Directory containing predicted masks")
     parser.add_argument("--dataset_json", type=str, default=os.getenv("DATASET_JSON"), help="Path to dataset.json")
     
@@ -72,12 +71,12 @@ def main():
     for entry in tqdm(entries, desc=f"Evaluating {args.split} Scans"):
         scan_id = entry["name"].replace(".nii.gz", "")
         
-        # The preprocessing script saves GT masks with the '_seg' postfix
-        gt_path = os.path.join(args.gt_dir, f"{scan_id}_seg.nii.gz")
+        # The raw GT masks are named identically to the images
+        gt_path = os.path.join(args.gt_dir, f"{scan_id}.nii.gz")
         pred_path = os.path.join(args.pred_dir, f"{scan_id}.nii.gz")
         
         if not os.path.exists(gt_path):
-            tqdm.write(f"[WARNING] GT not found: {gt_path}. You might need to run the preprocessing script again for the {args.split} split. Skipping.")
+            tqdm.write(f"[WARNING] GT not found: {gt_path}. Skipping.")
             missing_cases += 1
             continue
             

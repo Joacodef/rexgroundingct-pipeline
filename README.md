@@ -85,13 +85,20 @@ DEFAULT_DEVICE=cuda:0
 
 ```
 
-### 2. Preprocessing (Format Assurance)
+### 2. Preprocessing (Format Assurance & Native Resolution)
 
-Standardizes raw volumes to the coordinate space expected by the model.
+> [!IMPORTANT]
+> **Nota para VoxTell v1.1:** El script `preprocess.py` (que realiza resampling a 1.5mm isotropic spacing y clipping pulmonar) está en desuso para la evaluación de VoxTell v1.1. Modificaciones recientes demostraron que el resampling a 1.5mm degrada severamente el Average Dice (bajándolo a `~0.08`). 
+> 
+> En su lugar, el pipeline actual de VoxTell v1.1 realiza la inferencia **directamente en resolución nativa** y aplica un mecanismo matemático de **Reorientación Inversa 4D** para alinear las predicciones con el Ground Truth.
+> 
+> Para comprender en profundidad los detalles teóricos de este comportamiento, el desfase de distribución (OOD Shift) y la solución matemática implementada, consulte la guía:
+> 📄 **[Preprocesamiento en VoxTell y Desafíos de Alineación Espacial](file:///home/jdeferrari/rex_project/docs/voxtell_preprocessing_desafios.md)**
+
+Si por alguna razón requiere correr el preprocesamiento histórico resampleado a 1.5mm:
 
 ```bash
 ./.venv-voxtell/bin/python scripts/data_prep/preprocess.py
-
 ```
 
 ### 3. Batch Inference (Baseline)

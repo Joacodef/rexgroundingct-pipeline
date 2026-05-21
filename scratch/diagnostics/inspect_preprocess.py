@@ -14,6 +14,11 @@ Input/Output Contract:
 """
 
 import os
+from dotenv import load_dotenv
+load_dotenv(override=True)
+# Restrict visibility to compatible GPU 0/1 to bypass Blackwell sm_120 driver mismatch warnings
+os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
+
 import json
 import argparse
 import torch
@@ -21,15 +26,6 @@ import numpy as np
 import nibabel as nib
 from tqdm import tqdm
 from huggingface_hub import snapshot_download
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv(override=True)
-
-# 1. Strictly isolate GPU (Node policy) MUST happen before VoxTell imports
-os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
-
-# Import VoxTell dependencies after setting environment variables
 from voxtell.inference.predictor import VoxTellPredictor
 
 def main():

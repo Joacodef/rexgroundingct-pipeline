@@ -23,6 +23,7 @@ import nibabel as nib
 from tqdm import tqdm
 from huggingface_hub import snapshot_download
 from dotenv import load_dotenv
+from nibabel.orientations import io_orientation, axcodes2ornt, ornt_transform
 
 # Load environment variables from .env file
 load_dotenv(override=True)
@@ -44,15 +45,13 @@ def main():
 
     # Inject paths from .env file
     download_dir = os.getenv("MODEL_DIR")
-    
-    # Prefer fast volatile storage (/tmp) if available, fallback to persistent storage
-    data_prep_dir = os.getenv("TMP_PREP_DIR") or os.getenv("DATA_PREP_DIR")
+    img_raw_dir = os.getenv("IMG_RAW_DIR")
     output_dir = os.getenv("TMP_PRED_DIR") or os.getenv("DATA_PRED_DIR")
     dataset_json = os.getenv("DATASET_JSON")
 
     # Security validation for critical environment variables
-    if not all([download_dir, data_prep_dir, output_dir, dataset_json]):
-        raise ValueError("Error: Missing environment variables in .env (MODEL_DIR, DATA_PREP_DIR/TMP_PREP_DIR, DATA_PRED_DIR/TMP_PRED_DIR, DATASET_JSON).")
+    if not all([download_dir, img_raw_dir, output_dir, dataset_json]):
+        raise ValueError("Error: Missing environment variables in .env (MODEL_DIR, IMG_RAW_DIR, DATA_PRED_DIR/TMP_PRED_DIR, DATASET_JSON).")
 
     # Prepare directories
     os.makedirs(output_dir, exist_ok=True)
@@ -61,16 +60,19 @@ def main():
     # Device Configuration
     device = torch.device(os.getenv("DEFAULT_DEVICE", "cuda:0") if torch.cuda.is_available() else "cpu")
     
-    # We will download the paper version (v1.0)
-    model_name = "voxtell_v1.0" 
+    # Resolve the base models folder to keep folders clean
+    models_root = os.path.dirname(download_dir) if download_dir.endswith("voxtell_v1.0") else download_dir
+    
+    # Target recommended model version v1.1
+    model_name = "voxtell_v1.1" 
     
     # Get Weights from Hugging Face
     snapshot_download(
         repo_id="mrokuss/VoxTell", 
         allow_patterns=[f"{model_name}/*", "*.json"], 
-        local_dir=download_dir
+        local_dir=models_root
     )
-    voxtell_weights_dir = os.path.join(download_dir, model_name)
+    voxtell_weights_dir = os.path.join(models_root, model_name)
 
     # Initialize Predictor
     predictor = VoxTellPredictor(model_dir=voxtell_weights_dir, device=device)
@@ -95,20 +97,15 @@ def main():
         if not scan_id:
             continue
             
-        nifti_path = os.path.join(data_prep_dir, f"{scan_id}_ct.nii.gz")
+        nifti_path = os.path.join(img_raw_dir, f"{scan_id}.nii.gz")
         
         if not os.path.exists(nifti_path):
-            tqdm.write(f"[WARNING] Preprocessed file not found: {nifti_path}. Skipping.")
+            tqdm.write(f"[WARNING] Raw file not found: {nifti_path}. Skipping.")
             missing_files_count += 1
             continue
             
         # Load and reorient volume to RAS
         img, img_properties = reader.read_images([nifti_path])
-        
-        # Recover original affine for spatial matching with GT
-        affine = img_properties.get('affine')
-        if affine is None:
-            affine = nib.load(nifti_path).affine
         
         findings = entry.get('findings', {})
         if not findings:
@@ -130,26 +127,36 @@ def main():
         
         # Inference
         with torch.no_grad():
-            # Output: (num_prompts, x, y, z) -> Equivalent to (F, H, W, D)
-            # Note: nnU-Net internally returns (F, Z, X, Y) and resampled to its target spacing.
-            voxtell_seg = predictor.predict_single_image(img, text_prompts)
+            voxtell_seg = predictor.predict_single_image(img, text_prompts) # shape: (F, Z, Y, X)
             
-        # 1. Revert axis order from (F, Z, X, Y) to (F, X, Y, Z)
-        if voxtell_seg.ndim == 4:
-            pred_4d = np.moveaxis(voxtell_seg, 1, -1)
-        else:
-            pred_4d = voxtell_seg
-            
-        # Cast to uint8 to minimize memory footprint and I/O bottleneck in /tmp
-        pred_4d = pred_4d.astype(np.uint8)
+        # Reorient 4D prediction back to original image space
+        # 1. Transpose from (F, Z, Y, X) to (X, Y, Z, F) in RAS space
+        pred_xyzf = np.transpose(voxtell_seg, (3, 2, 1, 0))
         
-        # Save as NIfTI preserving the preprocessed space affine
-        out_nii = nib.Nifti1Image(pred_4d, affine)
+        # 2. Create NIfTI in RAS space using reoriented_affine
+        reoriented_affine = img_properties['nibabel_stuff']['reoriented_affine']
+        pred_nib = nib.Nifti1Image(pred_xyzf, reoriented_affine)
+        
+        # 3. Get the transformation to go from RAS back to original orientation
+        original_affine = img_properties['nibabel_stuff']['original_affine']
+        img_ornt = io_orientation(original_affine)
+        ras_ornt = axcodes2ornt("RAS")
+        from_canonical = ornt_transform(ras_ornt, img_ornt)
+        
+        # 4. Apply back-reorientation
+        pred_nib_back = pred_nib.as_reoriented(from_canonical)
+        
+        # 5. Extract data and transpose back to (F, X, Y, Z) to preserve original shape contract
+        pred_back_data = pred_nib_back.get_fdata().astype(np.uint8) # shape: (X, Y, Z, F)
+        pred_back_fxyz = np.transpose(pred_back_data, (3, 0, 1, 2)) # shape: (F, X, Y, Z)
+        
+        # Save prediction with the original raw image affine
+        out_nii = nib.Nifti1Image(pred_back_fxyz, original_affine)
         out_path = os.path.join(output_dir, f"{scan_id}.nii.gz")
         nib.save(out_nii, out_path)
 
     if missing_files_count > 0:
-        print(f"\n[INFO] Inference completed. Skipped {missing_files_count} missing files. Make sure to run the preprocessing script for the '{args.split}' split.")
+        print(f"\n[INFO] Inference completed. Skipped {missing_files_count} missing files.")
 
 if __name__ == "__main__":
     main()
