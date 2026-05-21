@@ -29,7 +29,7 @@ scratch/
 
 ## Directory Descriptions & Scripts
 
-### 📂 [scratch/diagnostics/](file:///home/jdeferrari/rex_project/scratch/diagnostics)
+### 📂 [scratch/diagnostics/](diagnostics)
 *Focused on verifying coordinate alignment, image dimensions, coordinate spaces, and preprocessing outputs.*
 
 *   **`diagnose_spatial_alignment.py`**: A spatial debugger that compares model predictions and ground truths. If they do not align, it automatically runs an exhaustive grid search over all 48 possible combinations of transpositions (axis swaps) and flips to find the correct alignment.
@@ -40,7 +40,7 @@ scratch/
 
 ---
 
-### 📂 [scratch/intensity_tuning/](file:///home/jdeferrari/rex_project/scratch/intensity_tuning)
+### 📂 [scratch/intensity_tuning/](intensity_tuning)
 *Focused on analyzing standard CT windowing operations, Hounsfield Unit (HU) clipping ranges, and probability calibration.*
 
 *   **`tune_intensities_and_windows.py`**: Tests the impact of different Hounsfield Unit clipping windows (e.g., soft-tissue window `[-125, 275]`, pulmonary window `[-1000, 400]`, broad ranges, and intensity value shifts) on model prediction volume and Dice score accuracy.
@@ -48,7 +48,7 @@ scratch/
 
 ---
 
-### 📂 [scratch/tests/](file:///home/jdeferrari/rex_project/scratch/tests)
+### 📂 [scratch/tests/](tests)
 *Focused on quick, end-to-end evaluation loops.*
 
 *   **`test_batch_validation.py`**: A fast, lightweight baseline runner that executes zero-shot inference using the `VoxTell` model on a subset of the validation split (first 5 cases by default). It prints case-level Dice scores, ground truth volumes, prediction sizes, and overall averages to quickly verify pipeline correctness before kicking off full batch runs.

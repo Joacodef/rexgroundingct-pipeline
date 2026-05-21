@@ -41,13 +41,17 @@ def main():
     parser = argparse.ArgumentParser(description="VoxTell Batch Zero-Shot Inference")
     parser.add_argument("--split", type=str, default="val", choices=["train", "val", "test"], 
                         help="Dataset split to evaluate (train, val, test)")
+    parser.add_argument("--dataset_json", type=str, default=None,
+                        help="Path to dataset.json (overrides .env)")
+    parser.add_argument("--output_dir", type=str, default=None,
+                        help="Output directory for predictions (overrides .env)")
     args = parser.parse_args()
 
     # Inject paths from .env file
     download_dir = os.getenv("MODEL_DIR")
     img_raw_dir = os.getenv("IMG_RAW_DIR")
-    output_dir = os.getenv("TMP_PRED_DIR") or os.getenv("DATA_PRED_DIR")
-    dataset_json = os.getenv("DATASET_JSON")
+    output_dir = args.output_dir or os.getenv("TMP_PRED_DIR") or os.getenv("DATA_PRED_DIR")
+    dataset_json = args.dataset_json or os.getenv("DATASET_JSON")
 
     # Security validation for critical environment variables
     if not all([download_dir, img_raw_dir, output_dir, dataset_json]):

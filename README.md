@@ -70,32 +70,36 @@ uv pip install \
 
 ### 1. Environment Setup (.env)
 
-The pipeline relies strictly on environment variables for path injection to ensure portability. Ensure your `.env` file at the root of the repository contains the following structure before execution:
+The pipeline relies strictly on environment variables for path injection to ensure portability. To configure your environment:
 
-```env
-# Base paths
-MODEL_DIR=/absolute/path/to/models/voxtell_v1.0
-DATA_PREP_DIR=/absolute/path/to/data/preprocessed
-DATA_PRED_DIR=/absolute/path/to/data/predictions
-DATASET_JSON=/absolute/path/to/data/dataset.json
+1. Copy the provided template to create your local environment file:
+   ```bash
+   cp .env.example .env
+   ```
+2. Open `.env` and configure the absolute paths for your local directory layout and GPU hardware:
+   ```env
+   # Base paths
+   MODEL_DIR=/absolute/path/to/models/voxtell_v1.0
+   DATA_PREP_DIR=/absolute/path/to/data/preprocessed
+   DATA_PRED_DIR=/absolute/path/to/data/predictions
+   DATASET_JSON=/absolute/path/to/data/dataset.json
 
-# GPU Isolation (Defaults to 0)
-CUDA_VISIBLE_DEVICES=0
-DEFAULT_DEVICE=cuda:0
-
-```
+   # GPU Isolation (Defaults to 0)
+   CUDA_VISIBLE_DEVICES=0
+   DEFAULT_DEVICE=cuda:0
+   ```
 
 ### 2. Preprocessing (Format Assurance & Native Resolution)
 
 > [!IMPORTANT]
-> **Nota para VoxTell v1.1:** El script `preprocess.py` (que realiza resampling a 1.5mm isotropic spacing y clipping pulmonar) está en desuso para la evaluación de VoxTell v1.1. Modificaciones recientes demostraron que el resampling a 1.5mm degrada severamente el Average Dice (bajándolo a `~0.08`). 
+> **Note for VoxTell v1.1:** The `preprocess.py` script (which performs resampling to 1.5mm isotropic spacing and lung clipping) is deprecated for VoxTell v1.1 evaluation. Recent modifications proved that 1.5mm resampling severely degrades the Average Dice (reducing it to `~0.08`). 
 > 
-> En su lugar, el pipeline actual de VoxTell v1.1 realiza la inferencia **directamente en resolución nativa** y aplica un mecanismo matemático de **Reorientación Inversa 4D** para alinear las predicciones con el Ground Truth.
+> Instead, the current VoxTell v1.1 pipeline performs inference **directly in native resolution** and applies a mathematical **4D Back-Reorientation** mechanism to align predictions with the Ground Truth.
 > 
-> Para comprender en profundidad los detalles teóricos de este comportamiento, el desfase de distribución (OOD Shift) y la solución matemática implementada, consulte la guía:
-> 📄 **[Preprocesamiento en VoxTell y Desafíos de Alineación Espacial](file:///home/jdeferrari/rex_project/docs/voxtell_preprocessing_desafios.md)**
+> To fully understand the theoretical details of this behavior, the Out-of-Distribution (OOD) Shift, and the implemented mathematical solution, please refer to the guide:
+> 📄 **[VoxTell Preprocessing and Spatial Alignment Challenges](docs/voxtell_preprocessing_challenges.md)**
 
-Si por alguna razón requiere correr el preprocesamiento histórico resampleado a 1.5mm:
+If for any reason you need to run the historic 1.5mm resampled preprocessing:
 
 ```bash
 ./.venv-voxtell/bin/python scripts/data_prep/preprocess.py
