@@ -49,12 +49,12 @@ def test_successful_inference_loop_and_4d_stacking(
     mock_exists.return_value = True
     
     dummy_json_data = {
-        "case_001": {
-            "findings": [
-                {"text": "finding A"},
-                {"text": "finding B"}
-            ]
-        }
+        "val": [
+            {
+                "name": "case_001.nii.gz",
+                "findings": ["finding A", "finding B"]
+            }
+        ]
     }
     
     # Simulate reading dataset.json
@@ -79,7 +79,7 @@ def test_successful_inference_loop_and_4d_stacking(
     # Control flow assertions
     mock_snapshot.assert_called_once()
     mock_predictor_class.assert_called_once()
-    mock_reader_instance.read_images.assert_called_once_with(["/tmp/dummy_prep/case_001.nii.gz"])
+    mock_reader_instance.read_images.assert_called_once_with(["/tmp/dummy_prep/case_001_ct.nii.gz"])
     
     # Check that prompts were passed in the exact JSON order
     mock_predictor_instance.predict_single_image.assert_called_once_with(

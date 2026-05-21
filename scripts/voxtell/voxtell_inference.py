@@ -44,13 +44,15 @@ def main():
 
     # Inject paths from .env file
     download_dir = os.getenv("MODEL_DIR")
-    data_prep_dir = os.getenv("DATA_PREP_DIR")
-    output_dir = os.getenv("DATA_PRED_DIR")
+    
+    # Prefer fast volatile storage (/tmp) if available, fallback to persistent storage
+    data_prep_dir = os.getenv("TMP_PREP_DIR") or os.getenv("DATA_PREP_DIR")
+    output_dir = os.getenv("TMP_PRED_DIR") or os.getenv("DATA_PRED_DIR")
     dataset_json = os.getenv("DATASET_JSON")
 
     # Security validation for critical environment variables
     if not all([download_dir, data_prep_dir, output_dir, dataset_json]):
-        raise ValueError("Error: Missing environment variables in .env (MODEL_DIR, DATA_PREP_DIR, DATA_PRED_DIR, DATASET_JSON).")
+        raise ValueError("Error: Missing environment variables in .env (MODEL_DIR, DATA_PREP_DIR/TMP_PREP_DIR, DATA_PRED_DIR/TMP_PRED_DIR, DATASET_JSON).")
 
     # Prepare directories
     os.makedirs(output_dir, exist_ok=True)
@@ -93,7 +95,7 @@ def main():
         if not scan_id:
             continue
             
-        nifti_path = os.path.join(data_prep_dir, f"{scan_id}.nii.gz")
+        nifti_path = os.path.join(data_prep_dir, f"{scan_id}_ct.nii.gz")
         
         if not os.path.exists(nifti_path):
             tqdm.write(f"[WARNING] Preprocessed file not found: {nifti_path}. Skipping.")
@@ -112,16 +114,32 @@ def main():
         if not findings_list:
             continue
             
-        # Extract prompts matching the exact positional index of the JSON (Dimension F)
-        text_prompts = [finding['text'] for finding in findings_list]
+        # Extract prompts (handle both list-of-dicts and list-of-strings formats)
+        text_prompts = [f['text'] if isinstance(f, dict) else f for f in findings_list]
         
         # Inference
         with torch.no_grad():
             # Output: (num_prompts, x, y, z) -> Equivalent to (F, H, W, D)
+            # Note: nnU-Net internally returns (F, Z, X, Y) and resampled to its target spacing.
             voxtell_seg = predictor.predict_single_image(img, text_prompts)
             
+        # 1. Revert axis order from (F, Z, X, Y) to (F, X, Y, Z)
+        if voxtell_seg.ndim == 4:
+            pred_4d = np.moveaxis(voxtell_seg, 1, -1)
+        else:
+            pred_4d = voxtell_seg
+            
+        # 2. Resample back to the exact GT resolution to revert VoxTell's internal scaling
+        target_shape = img.shape[1:]  # (X, Y, Z) from the preprocessed input
+        if pred_4d.shape[1:] != target_shape:
+            pred_tensor = torch.from_numpy(pred_4d).unsqueeze(0).float()  # (1, F, X, Y, Z)
+            pred_tensor = torch.nn.functional.interpolate(
+                pred_tensor, size=target_shape, mode='nearest'
+            )
+            pred_4d = pred_tensor.squeeze(0).numpy()
+
         # Cast to uint8 to minimize memory footprint and I/O bottleneck in /tmp
-        pred_4d = voxtell_seg.astype(np.uint8)
+        pred_4d = pred_4d.astype(np.uint8)
         
         # Save as NIfTI
         out_nii = nib.Nifti1Image(pred_4d, affine)

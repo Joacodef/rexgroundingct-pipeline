@@ -103,12 +103,15 @@ def main():
         resample=False,
         separate_folder=False
     )
+    
+    # Save segmentation mask maintaining the channel dim (Finding axes)
     save_seg = SaveImage(
         output_dir=OUT_DIR, 
         output_postfix="seg", 
         output_ext=".nii.gz", 
         resample=False,
-        separate_folder=False
+        separate_folder=False,
+        channel_dim=0 # FORCE MONAI to know channel is at 0, don't move it to the end
     )
 
     print(f"Starting batch preprocessing of {len(data_dicts)} volumes to {OUT_DIR}...")

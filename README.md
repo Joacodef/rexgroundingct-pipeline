@@ -98,7 +98,7 @@ Standardizes raw volumes to the coordinate space expected by the model.
 
 Zero-shot model execution on the validation set. Generates strictly aligned 4D NIfTI masks `(F, H, W, D)`.
 
-> 💡 **Recommendation:** For inference or training on full datasets on remote servers, it is highly recommended to use terminal multiplexers (`screen` or `tmux`).
+> 💡 **Recommendation:** For inference or training on full datasets on remote servers, it is highly recommended to use terminal multiplexers (preferably `tmux`).
 
 ```bash
 # Execution using the environment's isolated binary
@@ -111,16 +111,12 @@ Zero-shot model execution on the validation set. Generates strictly aligned 4D N
 Calculation of metrics against exhaustive annotations. (Target baseline: Global Dice ~0.285).
 
 ```bash
-./.venv-voxtell/bin/python rexrank_eval.py \
-  --gt_dir data/preprocessed \
-  --pred_dir data/predictions \
-  --output_json data/eval_results.json \
-  --dataset_json data/dataset.json
+./.venv-voxtell/bin/python scripts/evaluate.py
 
 ```
 
 ## 📝 Operational Considerations
 
 * **I/O Handling:** 4D NIfTI processing is highly read/write intensive. It is strongly recommended to use fast file systems (SSD/NVMe) or ramdisks (`/tmp` in Linux environments) to interact with data folders during *runtime*.
-* **Execution Environments:** For inference or training on Jumbito, use terminal multiplexers (`screen` or `tmux`). For SLURM-based clusters, wrap the Python calls in `sbatch` submission scripts and utilize node-local scratch directories (`$SLURM_TMPDIR`).
+* **Execution Environments:** For inference or training on Jumbito, use terminal multiplexers (`tmux` is preferred). For SLURM-based clusters, wrap the Python calls in `sbatch` submission scripts and utilize node-local scratch directories (`$SLURM_TMPDIR`).
 * **Distributed Training:** If running DDP on shared clusters, it is vital to explicitly assign free ports (e.g. `MASTER_PORT=$((RANDOM % 10000 + 20000))`) in the launch scripts to avoid network collisions with other users.
