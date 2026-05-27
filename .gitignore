@@ -19,6 +19,8 @@ models/
 *.bin
 *.safetensors
 
+submission_test.zip
+
 # =========================
 # 2. Environments and Credentials
 # =========================

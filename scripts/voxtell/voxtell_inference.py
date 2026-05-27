@@ -45,6 +45,12 @@ def main():
                         help="Path to dataset.json (overrides .env)")
     parser.add_argument("--output_dir", type=str, default=None,
                         help="Output directory for predictions (overrides .env)")
+    parser.add_argument("--checkpoint", type=str, default=None,
+                        help="Path to custom checkpoint file (.pth) to load weights from")
+    parser.add_argument("--use_teacher", action="store_true",
+                        help="Load teacher_state_dict instead of student_state_dict if custom checkpoint is specified")
+    parser.add_argument("--tile_step_size", type=float, default=0.5,
+                        help="Step size for sliding window inference (default: 0.5 = 50% overlap, increase to speed up)")
     args = parser.parse_args()
 
     # Inject paths from .env file
@@ -80,6 +86,26 @@ def main():
 
     # Initialize Predictor
     predictor = VoxTellPredictor(model_dir=voxtell_weights_dir, device=device)
+    predictor.tile_step_size = args.tile_step_size
+    
+    # Load custom checkpoint weights if specified
+    if args.checkpoint:
+        print(f"Loading custom checkpoint weights from {args.checkpoint}...")
+        checkpoint = torch.load(args.checkpoint, map_location='cpu')
+        
+        # Determine which state dict to use
+        if 'student_state_dict' in checkpoint or 'teacher_state_dict' in checkpoint:
+            key = 'teacher_state_dict' if args.use_teacher else 'student_state_dict'
+            state_dict = checkpoint[key]
+            print(f"Loaded '{key}' from checkpoint.")
+        elif 'network_weights' in checkpoint:
+            state_dict = checkpoint['network_weights']
+            print("Loaded 'network_weights' from checkpoint.")
+        else:
+            state_dict = checkpoint
+            print("Loaded raw state_dict from checkpoint.")
+            
+        predictor.network.load_state_dict(state_dict)
     
     # Data Reading and Reorientation (Critical for VoxTell)
     reader = NibabelIOWithReorient()
