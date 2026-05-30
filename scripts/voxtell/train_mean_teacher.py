@@ -10,6 +10,10 @@ This script implements Phase 2 Task 1 of ReXGroundingCT:
 """
 
 import os
+from dotenv import load_dotenv
+# Load environment variables first to ensure proper GPU isolation
+load_dotenv(override=True)
+
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
 
@@ -19,7 +23,6 @@ import torch
 import numpy as np
 import nibabel as nib
 from tqdm import tqdm
-from dotenv import load_dotenv
 
 import monai
 monai.data.set_track_meta(False)
@@ -27,9 +30,6 @@ import monai.transforms as mt
 from torch.utils.data import Dataset, DataLoader
 from nnunetv2.preprocessing.cropping.cropping import crop_to_nonzero
 from nnunetv2.preprocessing.normalization.default_normalization_schemes import ZScoreNormalization
-
-# Load environment variables
-load_dotenv(override=True)
 
 
 # Import VoxTell dependencies
@@ -43,7 +43,7 @@ class ReXDataset(Dataset):
     Loads images and 4D segmentations in native RAS space, crops non-zero regions,
     and applies MONAI patch-based cropping and augmentations.
     """
-    def __init__(self, dataset_json, split, img_dir, seg_dir, cache_dir, is_train=True):
+    def __init__(self, dataset_json, split, img_dir, seg_dir, cache_dir, is_train=True, patch_size=192):
         self.split = split
         self.img_dir = img_dir
         self.seg_dir = seg_dir
@@ -60,11 +60,11 @@ class ReXDataset(Dataset):
         # Setup MONAI Augmentation Pipeline
         if self.is_train:
             self.transforms = mt.Compose([
-                mt.SpatialPadd(keys=['image', 'seg'], spatial_size=[192, 192, 192], mode='constant'),
+                mt.SpatialPadd(keys=['image', 'seg'], spatial_size=[patch_size, patch_size, patch_size], mode='constant'),
                 mt.RandCropByPosNegLabeld(
                     keys=['image', 'seg'],
                     label_key='seg',
-                    spatial_size=[192, 192, 192],
+                    spatial_size=[patch_size, patch_size, patch_size],
                     pos=1.0,
                     neg=0.0,
                     num_samples=1
@@ -122,13 +122,14 @@ class ReXDataset(Dataset):
         
         # Cap number of findings during training/validation to manage memory footprint and prevent OOM
         num_findings = text_embeddings.shape[0]
-        if num_findings > 3:
+        max_f = 1
+        if num_findings > max_f:
             if self.is_train:
-                # Randomly sample 3 findings
-                selected_indices = np.random.choice(num_findings, 3, replace=False)
+                # Randomly sample 1 finding
+                selected_indices = np.random.choice(num_findings, max_f, replace=False)
             else:
-                # Deterministically select first 3 findings for consistent validation metrics
-                selected_indices = np.arange(3)
+                # Deterministically select first 1 finding for consistent validation metrics
+                selected_indices = np.arange(max_f)
             
             text_embeddings = text_embeddings[selected_indices]
             seg_cropped = seg_cropped[selected_indices]
@@ -310,13 +311,17 @@ def compute_roi_mask(seg_target, kernel_size=11, padding=5):
     return dilated > 0
 
 
-def compute_spoco_loss(logits, targets, roi_mask):
+def compute_spoco_loss(logits, targets, roi_mask, pos_weight=1.0):
     """
     SPOCO Masked Supervised Loss. Confines BCE and Dice losses strictly within the dilated ROI.
     """
     dtype = logits.dtype
-    # 1. BCE Loss confined to the dilated mask
-    bce = F.binary_cross_entropy_with_logits(logits, targets.to(dtype=dtype), reduction='none')
+    # 1. BCE Loss confined to the dilated mask with class-weighted positives
+    if pos_weight != 1.0:
+        pos_weight_tensor = torch.tensor([pos_weight], device=logits.device, dtype=dtype)
+        bce = F.binary_cross_entropy_with_logits(logits, targets.to(dtype=dtype), pos_weight=pos_weight_tensor, reduction='none')
+    else:
+        bce = F.binary_cross_entropy_with_logits(logits, targets.to(dtype=dtype), reduction='none')
     bce_masked = (bce * roi_mask.to(dtype=dtype)).sum() / (roi_mask.to(dtype=dtype).sum() + 1e-6)
     
     # 2. Dice Loss confined to the dilated mask
@@ -383,6 +388,10 @@ def main():
     parser.add_argument("--smoke-test", action="store_true", help="Run a quick 2-case 5-epoch test loop")
     parser.add_argument("--wandb", action="store_true", help="Log training metrics to Weights & Biases")
     parser.add_argument("--resume", action="store_true", help="Resume training from an existing checkpoint if available")
+    parser.add_argument("--max-consistency-weight", type=float, default=0.5, help="Maximum consistency scaling weight (default: 0.5)")
+    parser.add_argument("--consistency-warmup", type=int, default=15, help="Consistency loss warmup epochs (default: 15)")
+    parser.add_argument("--pos-weight", type=float, default=10.0, help="Positive class weight for BCE loss inside ROIs (default: 10.0)")
+    parser.add_argument("--patch-size", type=int, default=192, help="Patch size for training crops (default: 192)")
     args = parser.parse_args()
 
     # Paths isolation
@@ -442,8 +451,8 @@ def main():
         param.requires_grad = False
 
     # 4. Setup Dataloaders
-    train_dataset = ReXDataset(dataset_json, "train", img_dir, seg_dir, cache_dir, is_train=True)
-    val_dataset = ReXDataset(dataset_json, "val", img_dir, seg_dir, cache_dir, is_train=False)
+    train_dataset = ReXDataset(dataset_json, "train", img_dir, seg_dir, cache_dir, is_train=True, patch_size=args.patch_size)
+    val_dataset = ReXDataset(dataset_json, "val", img_dir, seg_dir, cache_dir, is_train=False, patch_size=args.patch_size)
 
     # Batch size is strictly 1 volume per GPU to fit high-res native training memory boundaries
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, num_workers=2)
@@ -469,6 +478,8 @@ def main():
 
     # Initialize ValidationPredictor once outside the training/validation loops
     predictor = ValidationPredictor(model_dir=model_dir, device=device, network=student_model)
+    # Ensure validation sliding window uses the configured patch size to prevent OOM
+    predictor.patch_size = [args.patch_size, args.patch_size, args.patch_size]
 
     # 6. Initialize Weights & Biases
     if args.wandb:
@@ -491,9 +502,11 @@ def main():
         epoch_loss_sup = 0.0
         epoch_loss_con = 0.0
         
-        # Warmup epochs: scale down to 2 for smoke-test, standard 5 otherwise
-        warmup = 2 if args.smoke_test else 5
-        w_con = get_consistency_weight(epoch, max_weight=10.0, warm_up_epochs=warmup)
+        # Warmup epochs: scale down to 2 for smoke-test, standard 15 (or custom) otherwise
+        warmup = 2 if args.smoke_test else args.consistency_warmup
+        # In smoke-test, we also scale the max consistency weight for safety
+        max_w = 0.1 if args.smoke_test else args.max_consistency_weight
+        w_con = get_consistency_weight(epoch, max_weight=max_w, warm_up_epochs=warmup)
         
         for batch in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{args.epochs} [Train]"):
             image = batch['image'].to(device)                           # shape: (1, 1, 192, 192, 192)
@@ -515,7 +528,7 @@ def main():
                     
                 # Compute ROI Mask and Semi-Supervised Losses
                 roi_mask = compute_roi_mask(seg_target, kernel_size=11, padding=5)
-                loss_sup = compute_spoco_loss(student_logits, seg_target, roi_mask)
+                loss_sup = compute_spoco_loss(student_logits, seg_target, roi_mask, pos_weight=args.pos_weight)
                 loss_con = compute_mpr_consistency_loss(student_probs, teacher_probs, roi_mask)
                 
                 # Total loss
@@ -523,6 +536,7 @@ def main():
             
             # Backward pass & Optimize
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(student_model.parameters(), max_norm=1.0)
             optimizer.step()
             
             # Synchronize Teacher weights using EMA
@@ -574,7 +588,7 @@ def main():
                 
                 # Validation relies strictly on the masked SPOCO ROI loss to handle partial annotations
                 val_roi_mask = compute_roi_mask(seg_target[None], kernel_size=11, padding=5)
-                loss = compute_spoco_loss(val_logits[None], seg_target[None], val_roi_mask)
+                loss = compute_spoco_loss(val_logits[None], seg_target[None], val_roi_mask, pos_weight=args.pos_weight)
                 val_loss += loss.item()
                 
                 # Explicit memory cleanup to prevent GPU OOM

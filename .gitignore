@@ -28,8 +28,8 @@ submission_test.zip
 .env
 
 # The context folder and gemini instructions
-.context
-GEMINI_INSTRUCTIONS.txt
+.gemini/
+
 
 # IDE configuration files (optional, but commonly ignored)
 *.code-workspace
@@ -37,8 +37,10 @@ GEMINI_INSTRUCTIONS.txt
 # Virtual environments (conda, venv)
 voxtell_env/
 .venv/
+.venv-voxtell/
 venv/
 env/
+
 
 # Bash scripts used to run in SLURM
 bash_scripts/
@@ -54,7 +56,8 @@ slurm-out
 
 # Training logs (Weights & Biases, TensorBoard, etc.)
 wandb/
-logs/
+logs/*
+!logs/experiments/
 checkpoints/
 nohup.out
 screenlog.0
