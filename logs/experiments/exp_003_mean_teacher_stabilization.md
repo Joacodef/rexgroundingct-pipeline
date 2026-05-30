@@ -1,9 +1,9 @@
 # Experiment Log 003: VoxTell v1.1 Mean Teacher Stabilization & Blackwell GPU Integration
 
-* **Date:** May 29, 2026  
+* **Date:** May 29-30, 2026  
 * **Author:** jdeferrari & Antigravity (AI Pair)  
 * **Project Milestone:** Milestone 1 (June 1, 2026) - Baseline and Methodological Validation  
-* **Status:** Verified (5-Epoch Smoke Test) & Executing (50-Epoch Full Scale Run)
+* **Status:** Completed & Evaluated (5-Epoch Checkpoint) | Relaunched (50-Epoch Persistent Full Scale Run)
 
 ---
 
@@ -77,9 +77,32 @@ A fast 5-epoch smoke test was executed on GPU 1 (`CUDA_VISIBLE_DEVICES=2` mapped
 
 ---
 
-## 5. Execution of the Full-Scale Run
-With complete stabilization and environment compatibility verified, the full-scale **50-epoch stabilized fine-tuning run** has been launched in the background:
-```bash
-WANDB_MODE=offline PYTHONUNBUFFERED=1 .venv-voxtell/bin/python -u scripts/voxtell/train_mean_teacher.py --epochs 50 --wandb
-```
-Offline W&B sync is active. The training run is currently executing Epoch 1 with an iteration speed of **~2.0 seconds/it** (approx. 1.6 hours per epoch).
+## 5. Quantitative Validation & Diagnostics (5-Epoch Checkpoint)
+On May 30, 2026, we evaluated both the **Student** and **Teacher (EMA)** weights on all 50 local validation scans to contrast performance against the zero-shot baseline:
+
+| Configuration | Average Dice (Primary Metric) | Hit Rate (Dice >= 0.1) | Observation |
+| :--- | :---: | :---: | :--- |
+| **Zero-Shot Baseline (v1.1)** | `0.2139` | `48.70%` (56/115 findings) | Stable baseline |
+| **Mean Teacher Student** | `0.0020` | `0.00%` (0/115 findings) | **Collapsed** (Global Over-prediction) |
+| **Mean Teacher Teacher (EMA)** | **`0.2195`** | **`50.43%`** (58/115 findings) | **Generalized & Improved** |
+
+### Voxel Probability Profiles & Student Collapse Diagnostics:
+By extracting raw probabilities on validation scan `train_13082_a_1`, we found that the Student's average probability across the entire 3D volume drifted to **~82%** for all classes (predicting a massive false-positive positive mask, which collapsed the Dice score). 
+
+**Root Cause**:
+* The **SPOCO loss** is confined strictly inside the dilated Regions of Interest (ROIs).
+* During the first 5 epochs, the **Consistency Loss** regularizing the unannotated background was practically inactive due to the 15-epoch sigmoid warmup scheduler ($w_{con} = 1.5e-07$).
+* The heavy positive class weight (`pos_weight = 10.0`) inside the ROIs forced the Student's activations to rapidly drift towards huge positive values without any background regularization.
+* The **Teacher (EMA)** model, updated slowly with `alpha = 0.999`, acted as a highly effective low-pass filter, shielding the Teacher weights from this Student drift and achieving a **clean generalization improvement of +0.0056 Dice and +1.73% Hit Rate** over the baseline!
+
+---
+
+## 6. SIGHUP Termination & Persistent Relaunch
+* **The SIGHUP Incident**: The initial 50-epoch full-scale training run launched on May 29 was abruptly terminated after 27 iterations (96.26 seconds of runtime) due to a `SIGHUP` signal sent when the parent terminal/IDE session closed. 
+* **The Resolution**: We updated the custom workspace instructions in `.gemini/GEMINI.md` to mandate persistent process execution going forward.
+* **Persistent Relaunch**: We relaunched the 50-epoch stabilized fine-tuning run on GPU 1 (Blackwell) persistently under `nohup` to ensure it survives IDE and workspace disconnections:
+  ```bash
+  WANDB_MODE=offline PYTHONUNBUFFERED=1 nohup .venv-voxtell/bin/python -u scripts/voxtell/train_mean_teacher.py --epochs 50 --wandb > logs/train_mean_teacher_50ep.log 2>&1 &
+  ```
+  Progress is being captured in `logs/train_mean_teacher_50ep.log` and offline Weights & Biases telemetry.
+
