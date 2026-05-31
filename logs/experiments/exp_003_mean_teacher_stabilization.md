@@ -1,5 +1,10 @@
 # Experiment Log 003: VoxTell v1.1 Mean Teacher Stabilization & Blackwell GPU Integration
 
+> [!WARNING]
+> **SERVER ENVIRONMENT TRANSITION NOTE:**  
+> This experiment log was historically drafted/executed on a different server environment ("Jumbito") which featured a single **95 GB VRAM Blackwell GPU**, local python virtual environments (`.venv-voxtell`), and direct host execution via `nohup`.
+> On the current **`ih-condor`** server, all jobs must run via the **SLURM scheduler** (`sbatch` / `srun`), conda environments (`conda activate voxtell`), and target **NVIDIA RTX A6000 / Ada Lovelace (48 GB VRAM)** GPUs. 
+
 * **Date:** May 29-31, 2026  
 * **Author:** jdeferrari & Antigravity (AI Pair)  
 * **Project Milestone:** Milestone 1 (June 1, 2026) - Baseline and Methodological Validation  

@@ -31,10 +31,10 @@ def main():
 
     # Run voxtell_inference.py
     env = os.environ.copy()
-    env["CUDA_VISIBLE_DEVICES"] = "1" # Visible index 1 maps to PyTorch index 1, host GPU 2
+    env["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
 
     cmd_inf = [
-        ".venv-voxtell/bin/python",
+        "python",
         "scripts/voxtell/voxtell_inference.py",
         "--split", "val",
         "--dataset_json", subset_path,
@@ -50,7 +50,7 @@ def main():
     print("Running evaluation...")
     eval_out = "data/eval_results_latest_subset_teacher.json"
     cmd_eval = [
-        ".venv-voxtell/bin/python",
+        "python",
         "scripts/evaluate.py",
         "--split", "val",
         "--dataset_json", subset_path,

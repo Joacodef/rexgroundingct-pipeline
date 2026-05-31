@@ -10,12 +10,12 @@ def main():
     pred_dir = "data/predictions_baseline_validation"
     os.makedirs(pred_dir, exist_ok=True)
     
-    # Enforce PyTorch visible device index 1 (maps to host GPU 2)
+    # Dynamic visible devices for SLURM compatibility
     env = os.environ.copy()
-    env["CUDA_VISIBLE_DEVICES"] = "1"
+    env["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
     
     cmd_inf = [
-        ".venv-voxtell/bin/python",
+        "python",
         "scripts/voxtell/voxtell_inference.py",
         "--split", "val",
         "--output_dir", pred_dir,
@@ -28,7 +28,7 @@ def main():
     print("Running evaluation...")
     eval_out = "data/eval_results_baseline_validation.json"
     cmd_eval = [
-        ".venv-voxtell/bin/python",
+        "python",
         "scripts/evaluate.py",
         "--split", "val",
         "--pred_dir", pred_dir,
