@@ -34,37 +34,46 @@ REX_PROJECT/
 
 ```
 
-## ⚙️ Environment Configuration (`uv`)
+## ⚙️ Environment Configuration
 
-This project uses `uv` for isolated package and dependency management, ensuring mathematical reproducibility of metrics on any server or cluster.
+Depending on which server environment you are running, choose the appropriate setup guide below.
 
-1. **Install `uv**`:
+### A. Official Cluster Setup (`ih-condor` SLURM + Conda)
+This server uses Environment Modules and pre-installed Conda environments.
 
-```bash
-curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
+1. **Load and Activate Conda:**
+   ```bash
+   module load conda
+   conda activate /mnt/workspace/jdeferrari/.conda/envs/voxtell
+   ```
+2. **Package Submissions (SLURM):**
+   All resource-intensive experiments (preprocessing, training, inference) **must** be submitted as SLURM jobs. Use the scripts in `bash_scripts/`:
+   * To preprocess data: `sbatch bash_scripts/preprocess.sh`
+   * To train: `sbatch bash_scripts/train.sh`
 
-```
+---
 
-2. **Create the isolated virtual environment (VoxTell)**:
+### B. Local / Alternative Server Setup (`uv`)
+For local systems or other servers that do not run SLURM/Conda, `uv` is used for isolated virtual environments.
 
-```bash
-uv venv .venv-voxtell --python 3.10
-
-```
-
+1. **Install `uv`**:
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+2. **Create the isolated virtual environment**:
+   ```bash
+   uv venv .venv-voxtell --python 3.10
+   ```
 3. **Install frozen dependencies**:
+   ```bash
+   uv pip install \
+     --no-verify-hashes \
+     --extra-index-url https://download.pytorch.org/whl/cu126 \
+     --index-strategy unsafe-best-match \
+     -r requirements/base.txt \
+     -r requirements/voxtell.txt
+   ```
 
-> ⚠️ **Note:** `uv` only searches the first index that contains a given package by default. The `--index-strategy unsafe-best-match` flag is required so that packages like `torch` are resolved from the PyTorch index while the rest fall back to PyPI. The `--no-verify-hashes` flag is needed because the PyTorch wheel index does not publish hash metadata.
-
-```bash
-uv pip install \
-  --no-verify-hashes \
-  --extra-index-url [https://download.pytorch.org/whl/cu126](https://download.pytorch.org/whl/cu126) \
-  --index-strategy unsafe-best-match \
-  -r requirements/base.txt \
-  -r requirements/voxtell.txt
-
-```
 
 ## 🚀 Execution Pipeline
 

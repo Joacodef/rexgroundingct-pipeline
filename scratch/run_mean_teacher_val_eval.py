@@ -6,9 +6,9 @@ from dotenv import load_dotenv
 def main():
     load_dotenv(override=True)
     
-    # Isolate Blackwell GPU using .env configuration
+    # Dynamic visible devices for SLURM compatibility
     env = os.environ.copy()
-    cuda_dev = os.getenv("CUDA_VISIBLE_DEVICES", "2")
+    cuda_dev = os.getenv("CUDA_VISIBLE_DEVICES", "0")
     env["CUDA_VISIBLE_DEVICES"] = cuda_dev
     
     checkpoint_path = "models/checkpoint_mean_teacher_final.pth"
@@ -32,7 +32,7 @@ def main():
     print("[1/4] Running batch validation inference using STUDENT weights...")
     os.makedirs(student_pred_dir, exist_ok=True)
     cmd_student_inf = [
-        ".venv-voxtell/bin/python",
+        "python",
         "scripts/voxtell/voxtell_inference.py",
         "--split", "val",
         "--output_dir", student_pred_dir,
@@ -43,7 +43,7 @@ def main():
     
     print("[2/4] Running metrics evaluation for STUDENT predictions...")
     cmd_student_eval = [
-        ".venv-voxtell/bin/python",
+        "python",
         "scripts/evaluate.py",
         "--split", "val",
         "--pred_dir", student_pred_dir,
@@ -60,7 +60,7 @@ def main():
     print("\n[3/4] Running batch validation inference using TEACHER weights...")
     os.makedirs(teacher_pred_dir, exist_ok=True)
     cmd_teacher_inf = [
-        ".venv-voxtell/bin/python",
+        "python",
         "scripts/voxtell/voxtell_inference.py",
         "--split", "val",
         "--output_dir", teacher_pred_dir,
@@ -72,7 +72,7 @@ def main():
     
     print("[4/4] Running metrics evaluation for TEACHER predictions...")
     cmd_teacher_eval = [
-        ".venv-voxtell/bin/python",
+        "python",
         "scripts/evaluate.py",
         "--split", "val",
         "--pred_dir", teacher_pred_dir,
