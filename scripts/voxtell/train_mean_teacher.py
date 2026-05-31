@@ -18,6 +18,7 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
 
 import json
+import hashlib
 import argparse
 import torch
 import numpy as np
@@ -57,6 +58,18 @@ class ReXDataset(Dataset):
         # Replicate nnUNet intensity normalization
         self.normalization = ZScoreNormalization(intensityproperties={})
         
+        # Dynamically compute a fixed-length MD5 hash based on preprocessing transformations
+        norm_name = self.normalization.__class__.__name__
+        prep_config = {
+            "orientation": "RAS",
+            "transpose_img": [2, 1, 0],
+            "transpose_seg": [0, 3, 2, 1],
+            "cropping": "crop_to_nonzero",
+            "normalization": norm_name
+        }
+        config_str = json.dumps(prep_config, sort_keys=True)
+        self.preprocessing_hash = hashlib.md5(config_str.encode('utf-8')).hexdigest()[:12]
+        
         # Setup MONAI Augmentation Pipeline
         if self.is_train:
             self.transforms = mt.Compose([
@@ -90,29 +103,49 @@ class ReXDataset(Dataset):
         img_path = os.path.join(self.img_dir, f"{scan_id}.nii.gz")
         seg_path = os.path.join(self.seg_dir, f"{scan_id}.nii.gz")
         
-        # 1. Load image and reorient to RAS using Nibabel
-        nib_img = nib.load(img_path)
-        from nibabel.orientations import io_orientation
-        img_ornt = io_orientation(nib_img.affine)
-        img_r = nib_img.as_reoriented(img_ornt)
-        img_data = img_r.get_fdata().transpose((2, 1, 0))[None] # shape: (1, Z, Y, X)
+        # Fast local SSD-based volume caching to bypass CPU-bound Gzip decompression
+        ssd_cache_dir = os.path.join(
+            os.getenv("TMP_PREP_DIR", "/tmp/jdeferrari/rexgroundingct_preprocessed"),
+            f"volume_cache_{self.preprocessing_hash}"
+        )
+        os.makedirs(ssd_cache_dir, exist_ok=True)
         
-        # 2. Load 4D segmentation mask
-        nib_seg = nib.load(seg_path)
-        seg_r = nib_seg.as_reoriented(img_ornt)
-        # Transpose spatial dimensions to match image order: from (F, X, Y, Z) to (F, Z, Y, X)
-        seg_data = seg_r.get_fdata().transpose((0, 3, 2, 1)) # shape: (F, Z, Y, X)
+        cache_img_path = os.path.join(ssd_cache_dir, f"{scan_id}_img.pt")
+        cache_seg_path = os.path.join(ssd_cache_dir, f"{scan_id}_seg.pt")
         
-        # 3. Perform cropping to non-zero region of the image
-        img_data = img_data.astype(np.float32)
-        seg_data = seg_data.astype(np.float32)
-        
-        img_cropped, _, bbox = crop_to_nonzero(img_data, None)
-        # Apply identical spatial cropping to segmentation
-        seg_cropped = seg_data[:, bbox[0][0]:bbox[0][1], bbox[1][0]:bbox[1][1], bbox[2][0]:bbox[2][1]]
-        
-        # 4. Perform intensity Z-score normalization
-        img_normalized = self.normalization.run(img_cropped, None)
+        if os.path.exists(cache_img_path) and os.path.exists(cache_seg_path):
+            img_normalized = torch.load(cache_img_path, map_location='cpu')
+            seg_cropped = torch.load(cache_seg_path, map_location='cpu')
+        else:
+            # 1. Load image and reorient to RAS using Nibabel
+            nib_img = nib.load(img_path)
+            from nibabel.orientations import io_orientation
+            img_ornt = io_orientation(nib_img.affine)
+            img_r = nib_img.as_reoriented(img_ornt)
+            img_data = img_r.get_fdata().transpose((2, 1, 0))[None] # shape: (1, Z, Y, X)
+            
+            # 2. Load 4D segmentation mask
+            nib_seg = nib.load(seg_path)
+            seg_r = nib_seg.as_reoriented(img_ornt)
+            seg_data = seg_r.get_fdata().transpose((0, 3, 2, 1)) # shape: (F, Z, Y, X)
+            
+            # 3. Perform cropping to non-zero region of the image
+            img_data = img_data.astype(np.float32)
+            seg_data = seg_data.astype(np.float32)
+            
+            img_cropped, _, bbox = crop_to_nonzero(img_data, None)
+            # Apply identical spatial cropping to segmentation
+            seg_cropped = seg_data[:, bbox[0][0]:bbox[0][1], bbox[1][0]:bbox[1][1], bbox[2][0]:bbox[2][1]]
+            
+            # 4. Perform intensity Z-score normalization
+            img_normalized = self.normalization.run(img_cropped, None)
+            
+            # Convert to PyTorch tensors and cache on fast local SSD
+            img_normalized = torch.as_tensor(img_normalized, dtype=torch.float32)
+            seg_cropped = torch.as_tensor(seg_cropped, dtype=torch.float32)
+            
+            torch.save(img_normalized, cache_img_path)
+            torch.save(seg_cropped, cache_seg_path)
         
         # 5. Load pre-computed Qwen text embeddings
         cache_path = os.path.join(self.cache_dir, f"{scan_id}.pt")

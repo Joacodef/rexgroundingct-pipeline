@@ -1,9 +1,9 @@
 # Experiment Log 003: VoxTell v1.1 Mean Teacher Stabilization & Blackwell GPU Integration
 
-* **Date:** May 29-30, 2026  
+* **Date:** May 29-31, 2026  
 * **Author:** jdeferrari & Antigravity (AI Pair)  
 * **Project Milestone:** Milestone 1 (June 1, 2026) - Baseline and Methodological Validation  
-* **Status:** Completed & Evaluated (5-Epoch Checkpoint) | Relaunched (50-Epoch Persistent Full Scale Run)
+* **Status:** Completed & Evaluated (5-Epoch Checkpoint) | 50-Epoch Persistent Run Active (Epoch 2 in progress)
 
 ---
 
@@ -105,4 +105,26 @@ By extracting raw probabilities on validation scan `train_13082_a_1`, we found t
   WANDB_MODE=offline PYTHONUNBUFFERED=1 nohup .venv-voxtell/bin/python -u scripts/voxtell/train_mean_teacher.py --epochs 50 --wandb > logs/train_mean_teacher_50ep.log 2>&1 &
   ```
   Progress is being captured in `logs/train_mean_teacher_50ep.log` and offline Weights & Biases telemetry.
+
+---
+
+## 7. Status Update (May 31, 2026) - Epoch 1 Completion & Validation Diagnostics
+On May 31, 2026, we inspected the active persistent training run (`earthy-leaf-5` / ID: `zz8kpgcy`) on GPU 1 (Blackwell) and confirmed the following key advancements:
+
+1. **Epoch 1 Completed Successfully:** 
+   * The training loop successfully completed all 2,992 iterations in **12 hours and 53 minutes**.
+   * **Average training loss:** `2.867519` (Supervised: `2.867519`, Consistency: `0.039865`).
+   * The model compiled and successfully saved [`models/checkpoint_mean_teacher_latest.pth`](file:///home/jdeferrari/rex_project/models/checkpoint_mean_teacher_latest.pth) (6.2 GB).
+   * **Epoch 2 is currently active** and proceeding smoothly at **`3.72s/it`** (currently at 18% completion).
+
+2. **SSD Cache Population Complete (100%):**
+   * The dynamic caching loop has successfully compiled **6,087 files** in `/tmp/jdeferrari/rexgroundingct_preprocessed/volume_cache_8eddd9b8e145/`.
+   * This represents **100% completitud** of the dataset volumes (2,992 Train + 50 Val = 3,042 cases, with 2 files cached per case: `_img.pt` and `_seg.pt`).
+   * **Disk Space:** The cache folder occupies **3.9 Terabytes** on the physical RAID SSD. 
+   * **Systemd Policy Verification:** We confirmed that `/tmp` is mapped to the physical `/` RAID partition (not a memory-based `tmpfs` RAM disk) and that systemd has **no automatic age-based deletion policy** (configured as `-` age limit), ensuring full cache permanence.
+
+3. **Validation Loss NaN Bug Diagnosed:**
+   * During Epoch 1 validation, the console reported `Average Val Loss: nan` despite a successful zero-shot/generalization evaluation showing `Average Dice (Primary Metric): 0.2195`.
+   * **Root Cause:** In `voxtell.inference.predictor` (`VoxTellPredictor`), the Gaussian step accumulation count tensor `n_predictions` is initialized in `torch.half` (float16). At the far boundaries of the CT scans, the exponential drop-off of the Gaussian window underflows the 16-bit numeric limit (less than `6e-5`) and becomes exactly `0.0`. When `torch.div` scales the logits, dividing by `0.0` yields a quiet `NaN` value which propagates through the validation loss.
+   * **Hotfix Action:** We have prepared an elegant class override for `ValidationPredictor` in `train_mean_teacher.py` that overrides sliding-window prediction and applies `torch.nan_to_num` to safe-guard the boundaries. We will deploy this hotfix immediately after the active 50-epoch run concludes (to avoid killing the active training processes).
 

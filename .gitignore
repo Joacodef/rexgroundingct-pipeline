@@ -31,6 +31,8 @@ submission_test.zip
 .gemini/
 
 
+.vscode
+
 # IDE configuration files (optional, but commonly ignored)
 *.code-workspace
 
