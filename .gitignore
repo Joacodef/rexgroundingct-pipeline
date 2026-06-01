@@ -28,7 +28,8 @@ submission_test.zip
 .env
 
 # The context folder and gemini instructions
-.gemini/
+.gemini/*
+!.gemini/shared/
 
 
 .vscode
