@@ -214,6 +214,10 @@ class ValidationPredictor(VoxTellPredictor):
         
         self.network = network
 
+    def predict_sliding_window_return_logits(self, input_image: torch.Tensor, text_embeddings: torch.Tensor) -> torch.Tensor:
+        logits = super().predict_sliding_window_return_logits(input_image, text_embeddings)
+        return torch.nan_to_num(logits, nan=0.0, posinf=0.0, neginf=0.0)
+
 
 def precompute_text_cache(dataset_json, cache_dir, device):
     """
