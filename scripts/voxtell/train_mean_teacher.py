@@ -15,7 +15,6 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
 
 import json
 import hashlib
@@ -105,7 +104,7 @@ class ReXDataset(Dataset):
         
         # Fast local SSD-based volume caching to bypass CPU-bound Gzip decompression
         ssd_cache_dir = os.path.join(
-            os.getenv("TMP_PREP_DIR", "/tmp/jdeferrari/rexgroundingct_preprocessed"),
+            os.environ["TMP_PREP_DIR"],
             f"volume_cache_{self.preprocessing_hash}"
         )
         os.makedirs(ssd_cache_dir, exist_ok=True)
@@ -432,10 +431,10 @@ def main():
     args = parser.parse_args()
 
     # Paths isolation
-    dataset_json = os.getenv("DATASET_JSON")
-    model_dir = os.getenv("MODEL_DIR")
-    img_dir = os.getenv("IMG_RAW_DIR")
-    seg_dir = os.getenv("SEG_RAW_DIR")
+    dataset_json = os.environ["DATASET_JSON"]
+    model_dir = os.environ["MODEL_DIR"]
+    img_dir = os.environ["IMG_RAW_DIR"]
+    seg_dir = os.environ["SEG_RAW_DIR"]
     cache_dir = os.path.join(os.path.dirname(dataset_json), "text_cache")
 
     # If model_dir points to voxtell_v1.0 but voxtell_v1.1 exists, redirect to it

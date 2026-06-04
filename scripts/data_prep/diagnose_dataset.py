@@ -9,9 +9,9 @@ from monai.transforms import LoadImaged, EnsureChannelFirstd
 # Load environment variables from .env
 load_dotenv(override=True)
 
-DATASET_JSON = os.getenv("DATASET_JSON")
-IMG_DIR = os.getenv("IMG_RAW_DIR")
-SEG_DIR = os.getenv("SEG_RAW_DIR")
+DATASET_JSON = os.environ["DATASET_JSON"]
+IMG_DIR = os.environ["IMG_RAW_DIR"]
+SEG_DIR = os.environ["SEG_RAW_DIR"]
 
 def main():
     parser = argparse.ArgumentParser(description="Dataset Dimensionality & Metadata Diagnostic Utility")

@@ -23,11 +23,11 @@ logger = logging.getLogger("preprocess")
 load_dotenv(override=True)
 
 # Dynamic paths from .env
-DATASET_JSON = os.getenv("DATASET_JSON")
-IMG_DIR = os.getenv("IMG_RAW_DIR") 
-SEG_DIR = os.getenv("SEG_RAW_DIR")
-TMP_PREP_DIR = os.getenv("TMP_PREP_DIR")
-DATA_PREP_DIR = os.getenv("DATA_PREP_DIR")
+DATASET_JSON = os.environ["DATASET_JSON"]
+IMG_DIR = os.environ["IMG_RAW_DIR"] 
+SEG_DIR = os.environ["SEG_RAW_DIR"]
+TMP_PREP_DIR = os.environ["TMP_PREP_DIR"]
+DATA_PREP_DIR = os.environ["DATA_PREP_DIR"]
 
 # Determine output directory based on environment (Jumbito vs ih-condor)
 if TMP_PREP_DIR:

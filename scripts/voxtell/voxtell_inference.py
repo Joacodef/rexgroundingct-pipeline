@@ -29,8 +29,7 @@ from nibabel.orientations import io_orientation, axcodes2ornt, ornt_transform
 load_dotenv(override=True)
 
 # 1. Strictly isolate GPU (Node policy) MUST happen before VoxTell/nnU-Net imports
-# Falls back to "0" if not explicitly set in the environment or .env
-os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
+# Note: CUDA_VISIBLE_DEVICES must be explicitly set in the environment or .env
 
 # Import VoxTell dependencies after setting environment variables
 from voxtell.inference.predictor import VoxTellPredictor
@@ -54,10 +53,10 @@ def main():
     args = parser.parse_args()
 
     # Inject paths from .env file
-    download_dir = os.getenv("MODEL_DIR")
-    img_raw_dir = os.getenv("IMG_RAW_DIR")
-    output_dir = args.output_dir or os.getenv("TMP_PRED_DIR") or os.getenv("DATA_PRED_DIR")
-    dataset_json = args.dataset_json or os.getenv("DATASET_JSON")
+    download_dir = os.environ["MODEL_DIR"]
+    img_raw_dir = os.environ["IMG_RAW_DIR"]
+    output_dir = args.output_dir or os.environ.get("TMP_PRED_DIR") or os.environ["DATA_PRED_DIR"]
+    dataset_json = args.dataset_json or os.environ["DATASET_JSON"]
 
     # Security validation for critical environment variables
     if not all([download_dir, img_raw_dir, output_dir, dataset_json]):
@@ -68,7 +67,7 @@ def main():
     os.makedirs(download_dir, exist_ok=True)
 
     # Device Configuration
-    device = torch.device(os.getenv("DEFAULT_DEVICE", "cuda:0") if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     # Resolve the base models folder to keep folders clean
     models_root = os.path.dirname(download_dir) if download_dir.endswith("voxtell_v1.0") else download_dir
