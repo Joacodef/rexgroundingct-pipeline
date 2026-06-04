@@ -83,6 +83,6 @@ Run a full validation evaluation on the 50 validation scans to compare results:
 ---
 
 ## 5. Timeline & Milestones
-* **Launch Date:** June 2, 2026 (immediately after Experiment 003 concludes).
+* **Launch Date:** Pending (Delayed due to Experiment 003 restart). The previous Exp 003 run was aborted at Epoch 8 due to a sliding window fp16 precision underflow bug (which caused false 0.0 Dice scores). A fresh 50-epoch run of Experiment 003 has been initiated. Exp 004 will launch immediately after its conclusion.
 * **Monitoring:** Real-time logging of multi-class train/val losses to Weights & Biases.
 * **Milestone 2 Target:** Reach **`0.32` Average Dice** on validation scans by June 15, 2026.
