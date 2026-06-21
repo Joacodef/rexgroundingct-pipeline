@@ -133,3 +133,22 @@ On May 31, 2026, we inspected the active persistent training run (`earthy-leaf-5
    * **Root Cause:** In `voxtell.inference.predictor` (`VoxTellPredictor`), the Gaussian step accumulation count tensor `n_predictions` is initialized in `torch.half` (float16). At the far boundaries of the CT scans, the exponential drop-off of the Gaussian window underflows the 16-bit numeric limit (less than `6e-5`) and becomes exactly `0.0`. When `torch.div` scales the logits, dividing by `0.0` yields a quiet `NaN` value which propagates through the validation loss.
    * **Hotfix Action:** We have prepared an elegant class override for `ValidationPredictor` in `train_mean_teacher.py` that overrides sliding-window prediction and applies `torch.nan_to_num` to safe-guard the boundaries. We will deploy this hotfix immediately after the active 50-epoch run concludes (to avoid killing the active training processes).
 
+---
+
+## 8. Status Update (June 9, 2026) - Defeating the Deep Epoch NaN Bug
+On June 9, 2026, we encountered a catastrophic `NaN` crash at **Epoch 26**. Although we had previously applied a hotfix (changing Gaussian accumulation buffers to `torch.float32`), the `NaN` issue persisted deep into the training.
+
+### Root Cause Analysis
+We discovered two critical vectors of instability causing the `NaN` propagation under Automatic Mixed Precision (AMP):
+1. **`float16` vs `bfloat16` Mismatch:** While the training loop in `train_mean_teacher.py` explicitly used `dtype=torch.bfloat16`, the validation predictor in `voxtell/inference/predictor.py` defaulted to `enabled=True` which falls back to regular `float16`. As activations grew in magnitude over 26 epochs, they exceeded the strict `65504` ceiling of `float16`, overflowing into `inf` and `NaN`s internally during the forward pass.
+2. **Loss Function Underflow:** Sums and denominators in `compute_spoco_loss` and MSE projections in `compute_mpr_consistency_loss` were being computed natively in mixed precision.
+
+### Resolution & Relaunch
+We applied the following strict patches:
+* **Predictor Autocast:** Forced `dtype=torch.bfloat16` in `voxtell/inference/predictor.py` and added an explicit `torch.isnan` check alongside the `torch.isinf` check.
+* **Loss Upcasting:** Modified `train_mean_teacher.py` to upcast BCE denominators, Dice intersection/union, and MPR projections to `.float()` (32-bit) before division and MSE computations.
+
+The old process was terminated and **a new persistent run was launched on GPU 1 (Blackwell) with PID `840136`**. 
+
+> [!CAUTION]
+> **STRICT HOLD:** The team has agreed **not to proceed to Task B** or any other experiment until we have *absolute empirical certainty* that this run (`PID 840136`) successfully crosses the Epoch 26 danger zone without crashing. The pipeline is effectively frozen while we wait for these epochs to complete over the next few days.

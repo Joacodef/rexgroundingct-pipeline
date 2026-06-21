@@ -205,6 +205,7 @@ class ValidationPredictor(VoxTellPredictor):
         self.tile_step_size = 0.5
         self.perform_everything_on_device = False
         self.max_text_length = 8192
+        self.verbose = False
         
         # Load network settings
         from batchgenerators.utilities.file_and_folder_operations import join, load_json
@@ -358,18 +359,30 @@ def compute_spoco_loss(logits, targets, roi_mask, pos_weight=1.0):
         bce = F.binary_cross_entropy_with_logits(logits, targets.to(dtype=dtype), pos_weight=pos_weight_tensor, reduction='none')
     else:
         bce = F.binary_cross_entropy_with_logits(logits, targets.to(dtype=dtype), reduction='none')
-    bce_masked = (bce * roi_mask.to(dtype=dtype)).sum() / (roi_mask.to(dtype=dtype).sum() + 1e-6)
+    bce_masked = (bce * roi_mask.to(dtype=dtype)).sum().float() / (roi_mask.to(dtype=dtype).sum().float() + 1e-6)
     
     # 2. Dice Loss confined to the dilated mask
     probs = torch.sigmoid(logits)
     probs_masked = probs * roi_mask.to(dtype=dtype)
     targets_masked = targets.to(dtype=dtype) * roi_mask.to(dtype=dtype)
     
-    intersection = (probs_masked * targets_masked).sum(dim=(2, 3, 4))
-    union = probs_masked.sum(dim=(2, 3, 4)) + targets_masked.sum(dim=(2, 3, 4))
+    intersection = (probs_masked * targets_masked).sum(dim=(2, 3, 4)).float()
+    union = probs_masked.sum(dim=(2, 3, 4)).float() + targets_masked.sum(dim=(2, 3, 4)).float()
     dice = 1.0 - (2.0 * intersection + 1e-6) / (union + 1e-6)
     
     return bce_masked + dice.mean()
+
+
+def compute_dice_score(logits, targets, threshold=0.0):
+    """
+    Computes global Dice Coefficient directly on full-volume logits vs targets.
+    """
+    probs = (logits > threshold).float()
+    targets_f = targets.float()
+    intersection = (probs * targets_f).sum(dim=(2, 3, 4))
+    union = probs.sum(dim=(2, 3, 4)) + targets_f.sum(dim=(2, 3, 4))
+    dice = (2.0 * intersection + 1e-6) / (union + 1e-6)
+    return dice.mean()
 
 
 def compute_mpr_consistency_loss(student_probs, teacher_probs, roi_mask):
@@ -392,10 +405,10 @@ def compute_mpr_consistency_loss(student_probs, teacher_probs, roi_mask):
     p_coronal_t = torch.max(bg_teacher, dim=3)[0]
     p_sagittal_t = torch.max(bg_teacher, dim=4)[0]
     
-    # Compute MSE across projections
-    loss_axial = F.mse_loss(p_axial_s, p_axial_t)
-    loss_coronal = F.mse_loss(p_coronal_s, p_coronal_t)
-    loss_sagittal = F.mse_loss(p_sagittal_s, p_sagittal_t)
+    # Compute MSE across projections in float32 to prevent exponent overflow
+    loss_axial = F.mse_loss(p_axial_s.float(), p_axial_t.float())
+    loss_coronal = F.mse_loss(p_coronal_s.float(), p_coronal_t.float())
+    loss_sagittal = F.mse_loss(p_sagittal_s.float(), p_sagittal_t.float())
     
     return (loss_axial + loss_coronal + loss_sagittal) / 3.0
 
@@ -428,6 +441,7 @@ def main():
     parser.add_argument("--consistency-warmup", type=int, default=15, help="Consistency loss warmup epochs (default: 15)")
     parser.add_argument("--pos-weight", type=float, default=10.0, help="Positive class weight for BCE loss inside ROIs (default: 10.0)")
     parser.add_argument("--patch-size", type=int, default=192, help="Patch size for training crops (default: 192)")
+    parser.add_argument("--val-only", action="store_true", help="Run only the validation loop on the loaded checkpoint")
     args = parser.parse_args()
 
     # Paths isolation
@@ -530,6 +544,48 @@ def main():
             }
         )
 
+    def run_validation(epoch_idx):
+        student_model.eval()
+        val_loss = 0.0
+        val_dice = 0.0
+        print(f"[DEBUG] GPU memory before validation: {torch.cuda.memory_allocated() / 1e9:.2f} GB | reserved: {torch.cuda.memory_reserved() / 1e9:.2f} GB")
+        with torch.no_grad():
+            for batch in tqdm(val_loader, desc=f"Epoch {epoch_idx + 1}/{args.epochs} [Val]"):
+                image = batch['image'][0].to(device)
+                seg_target = batch['seg'][0].to(device)
+                text_embeddings = batch['text_embeddings'].to(device)
+                
+                val_logits = predictor.predict_sliding_window_return_logits(image, text_embeddings).to(device)
+                
+                val_roi_mask = compute_roi_mask(seg_target[None], kernel_size=11, padding=5)
+                loss = compute_spoco_loss(val_logits[None], seg_target[None], val_roi_mask, pos_weight=args.pos_weight)
+                val_loss += loss.item()
+                
+                dice = compute_dice_score(val_logits[None], seg_target[None])
+                val_dice += dice.item()
+                
+                del image, seg_target, text_embeddings, val_logits, val_roi_mask, loss, dice
+                torch.cuda.empty_cache()
+                
+        avg_val_loss = val_loss / len(val_loader)
+        avg_val_dice = val_dice / len(val_loader)
+        print(f"Epoch {epoch_idx + 1} Validation. Average Val Loss: {avg_val_loss:.6f} | Average Dice: {avg_val_dice:.4f}")
+        
+        if args.wandb:
+            wandb.log({"val/loss": avg_val_loss, "val/dice": avg_val_dice, "epoch": epoch_idx + 1})
+            
+        import gc
+        gc.collect()
+        torch.cuda.empty_cache()
+        print(f"[DEBUG] GPU memory after validation cleanup: {torch.cuda.memory_allocated() / 1e9:.2f} GB | reserved: {torch.cuda.memory_reserved() / 1e9:.2f} GB")
+
+    if args.val_only:
+        print("\n[INFO] Running in validation-only mode.")
+        run_validation(max(0, start_epoch - 1))
+        if args.wandb:
+            wandb.finish()
+        return
+
     # 7. Training Loop
     print("\nStarting Mean Teacher fine-tuning pipeline...")
     for epoch in range(start_epoch, args.epochs):
@@ -609,39 +665,7 @@ def main():
             })
 
         # 8. Validation Pass
-        student_model.eval()
-        val_loss = 0.0
-        
-        print(f"[DEBUG] GPU memory before validation: {torch.cuda.memory_allocated() / 1e9:.2f} GB | reserved: {torch.cuda.memory_reserved() / 1e9:.2f} GB")
-        with torch.no_grad():
-            for batch in tqdm(val_loader, desc=f"Epoch {epoch + 1}/{args.epochs} [Val]"):
-                image = batch['image'][0].to(device)                           # shape: (1, Z, Y, X)
-                seg_target = batch['seg'][0].to(device)                       # shape: (F, Z, Y, X)
-                text_embeddings = batch['text_embeddings'].to(device)       # shape: (1, F, 2560)
-                
-                # Perform sliding window inference to get full-resolution logits
-                val_logits = predictor.predict_sliding_window_return_logits(image, text_embeddings).to(device)
-                
-                # Validation relies strictly on the masked SPOCO ROI loss to handle partial annotations
-                val_roi_mask = compute_roi_mask(seg_target[None], kernel_size=11, padding=5)
-                loss = compute_spoco_loss(val_logits[None], seg_target[None], val_roi_mask, pos_weight=args.pos_weight)
-                val_loss += loss.item()
-                
-                # Explicit memory cleanup to prevent GPU OOM
-                del image, seg_target, text_embeddings, val_logits, val_roi_mask, loss
-                torch.cuda.empty_cache()
-                
-        avg_val_loss = val_loss / len(val_loader)
-        print(f"Epoch {epoch + 1} Validation. Average Val Loss: {avg_val_loss:.6f}")
-        
-        if args.wandb:
-            wandb.log({"val/loss": avg_val_loss, "epoch": epoch + 1})
-            
-        # Complete garbage collection and free CUDA memory after validation to prevent OOM
-        import gc
-        gc.collect()
-        torch.cuda.empty_cache()
-        print(f"[DEBUG] GPU memory after validation cleanup: {torch.cuda.memory_allocated() / 1e9:.2f} GB | reserved: {torch.cuda.memory_reserved() / 1e9:.2f} GB")
+        run_validation(epoch)
 
         # Save latest checkpoint at the end of each epoch for training recovery
         latest_checkpoint_path = os.path.join(os.path.dirname(model_dir), "checkpoint_mean_teacher_latest.pth")
