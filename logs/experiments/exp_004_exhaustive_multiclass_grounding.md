@@ -1,9 +1,10 @@
 # Experiment Log 004: VoxTell v1.1 Exhaustive Multi-Finding Grounding [DRAFT]
 
-> [!WARNING]
-> **SERVER ENVIRONMENT TRANSITION NOTE:**  
-> This experiment log was historically drafted on a different server environment ("Jumbito") which featured a **95 GB VRAM Blackwell GPU**, local python virtual environments (`.venv-voxtell`), and direct execution.
-> On the current **`ih-condor`** server, all jobs must run via the **SLURM scheduler** (`sbatch` / `srun`), conda environments (`conda activate voxtell`), and target **NVIDIA RTX A6000 / Ada Lovelace (48 GB VRAM)** GPUs. 
+> [!NOTE]
+> **PARALLEL SERVER EXECUTION NOTE:**  
+> This project is executed across two parallel environments:
+> *   **`jumbito`**: Direct host execution using `.venv-voxtell` and `nohup`/`tmux`. GPU isolation is managed via `CUDA_VISIBLE_DEVICES`.
+> *   **`ih-condor`**: SLURM-managed cluster where execution must run via `sbatch` / `srun` under the conda environment `voxtell`. Checkpointing is mandatory to survive queue preemption limits. 
 
 * **Date:** Proposed for June 2, 2026  
 * **Author:** jdeferrari & Antigravity (AI Pair)  
