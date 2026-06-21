@@ -1,7 +1,7 @@
 # Experiment Log 002: VoxTell v1.1 Mean Teacher Semi-Supervised Fine-Tuning
 
 * **Date:** May 27, 2026  
-* **Author:** jdeferrari & Antigravity (AI Pair)  
+
 * **Project Milestone:** Milestone 1 (June 1, 2026) - Baseline and Methodological Validation  
 * **Status:** Interrupted (Epoch 5) & Evaluated (Trivial Collapse Diagnosed)
 

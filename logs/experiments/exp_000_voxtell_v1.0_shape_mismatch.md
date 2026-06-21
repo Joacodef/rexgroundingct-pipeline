@@ -1,7 +1,7 @@
 # Experiment Log 000: VoxTell v1.0 - Resampled Preprocessing Failure and Catastrophic Spatial Disalignment
 
 * **Date:** May 17, 2026  
-* **Authors:** jdeferrari & Antigravity (AI Pair)  
+
 * **Project Milestone:** Milestone 1 (June 1, 2026) - Baseline and Methodological Verification  
 * **Status:** **FAILED & ABANDONED** (This pipeline was officially retired due to catastrophic metrics; all core lessons were used to design the successful native-resolution pipeline in Exp 001)
 

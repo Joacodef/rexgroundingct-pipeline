@@ -7,7 +7,7 @@
 > *   **`ih-condor`**: SLURM-managed cluster where execution must run via `sbatch` / `srun` under the conda environment `voxtell`. Checkpointing is mandatory to survive queue preemption limits. 
 
 * **Date:** May 29-31, 2026  
-* **Author:** jdeferrari & Antigravity (AI Pair)  
+
 * **Project Milestone:** Milestone 1 (June 1, 2026) - Baseline and Methodological Validation  
 * **Status:** Completed & Evaluated (5-Epoch Checkpoint) | 50-Epoch Persistent Run Active (Epoch 2 in progress)
 

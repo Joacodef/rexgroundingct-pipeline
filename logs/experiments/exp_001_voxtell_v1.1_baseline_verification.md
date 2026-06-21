@@ -1,7 +1,7 @@
 # Experiment Log 001: VoxTell v1.1 Zero-Shot Validation & Baseline Verification
 
 * **Date:** May 21, 2026 (Initial) & May 27, 2026 (Re-run Verification)  
-* **Author:** jdeferrari & Antigravity (AI Pair)  
+
 * **Project Milestone:** Milestone 1 (June 1, 2026) - Baseline and Methodological Verification  
 * **Status:** Completed & Mathematically Verified
 
