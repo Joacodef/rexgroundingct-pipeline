@@ -1,11 +1,20 @@
-# Directorio de Scratch: Herramientas de Validación y Diagnóstico de Fase 2
+# Scratch Directory: Phase 2 & 3 Validation and Diagnostic Tools
 
-Este directorio contiene herramientas experimentales y scripts auxiliares utilizados durante la fase de fine-tuning y evaluación en el reto **ReXGroundingCT**.
+This directory contains experimental tools, temporary analysis scripts, and diagnostic utilities used during the fine-tuning, evaluation, and data exploration phases of the **ReXGroundingCT** challenge.
 
-## Estructura Actual
+## Current Structure
 
-*   **`run_mean_teacher_val_eval.py`**: Script auxiliar para evaluar cuantitativamente checkpoints específicos del entrenamiento Mean Teacher. Genera predicciones 3D mediante sliding window tanto para la red Student como para la red Teacher (EMA), calcula el coeficiente Dice global en el conjunto de validación y los contrasta frente al baseline zero-shot (v1.1).
+### 1. `eval_scripts/`
+*   **`run_mean_teacher_val_eval.py`**: Auxiliary script to quantitatively evaluate specific Mean Teacher checkpoints. It generates 3D predictions using a sliding window for both the Student and Teacher (EMA) networks, calculates the global Dice coefficient on the validation set, and compares them against the zero-shot baseline (v1.1).
 
-## Notas de Ejecución
+### 2. `data_utils/`
+*   **`diagnose_dataset.py`**: Diagnostic utility for inspecting dataset metadata, dimensionalities, and missing findings.
+*   **`download_missing_val.py`**: Script to connect to the Hugging Face hub and download missing validation CT volumes.
 
-Todos los scripts de este directorio leen la configuración del entorno desde `.env` para heredar las variables de aislamiento de hardware (como `CUDA_VISIBLE_DEVICES`), garantizando un comportamiento predecible y evitando la ocupación involuntaria de recursos en uso por otros usuarios del servidor.
+### 3. `exp_004_analysis/`
+*   **`exp_004_heatmaps.py`**: Script to generate Coronal and Axial Maximum Intensity Projections (MIP) to visualize the spatial distribution of findings.
+*   **`exp_004_stats.py`**: Script to compute descriptive statistics comparing the sparse Train annotations against the exhaustive Val+Test annotations.
+
+## Execution Notes
+
+All scripts in this directory read the environment configuration from `.env` to inherit hardware isolation variables (such as `CUDA_VISIBLE_DEVICES`), ensuring predictable behavior and avoiding unintentional occupation of resources in use by other server users.

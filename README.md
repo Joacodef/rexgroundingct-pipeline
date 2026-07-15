@@ -24,6 +24,10 @@ REX_PROJECT/
 ├── requirements/               # Modular dependency architecture
 │   ├── base.txt                # Infrastructure, volumetric manipulation (MONAI) and monitoring
 │   └── voxtell.txt             # Model-specific dependencies, CUDA and PyTorch compilation
+├── scratch/                    # Temporary and experimental diagnostic tools
+│   ├── data_utils/             # Dataset metadata and downloading scripts
+│   ├── eval_scripts/           # Validation and metric checking scripts
+│   └── exp_004_analysis/       # Heatmaps and statistics for Exp 004
 ├── scripts/                    # Executable pipeline
 │   ├── data_prep/              # Preprocessing pipeline (orientation, resampling, clipping)
 │   └── voxtell/                
@@ -96,6 +100,12 @@ The pipeline relies strictly on environment variables for path injection to ensu
    # GPU Isolation (Defaults to 0)
    CUDA_VISIBLE_DEVICES=0
    DEFAULT_DEVICE=cuda:0
+
+   # Cloud Telemetry & Datasets
+   WANDB_API_KEY=your_wandb_api_key_here
+   WANDB_PROJECT=rexgroundingct-challenge
+   WANDB_MODE=online
+   HF_TOKEN=your_hf_access_token_here
    ```
 
 ### 2. Preprocessing (Format Assurance & Native Resolution)

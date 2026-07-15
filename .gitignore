@@ -27,9 +27,10 @@ submission_test.zip
 # Your environment variables file (NEVER uploaded to GitHub)
 .env
 
-# The context folder and gemini instructions
-.gemini/*
-!.gemini/shared/
+# The context folder and agent instructions
+.agents/*
+!.agents/shared/
+!.agents/AGENTS.md
 
 
 .vscode
