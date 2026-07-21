@@ -1,4 +1,4 @@
-# Experiment Log 002: VoxTell v1.1 Mean Teacher Semi-Supervised Fine-Tuning
+# Experiment Log 002: [Archived Pre-Pivot] VoxTell v1.1 Mean Teacher Semi-Supervised Fine-Tuning
 
 * **Date:** May 27, 2026  
 

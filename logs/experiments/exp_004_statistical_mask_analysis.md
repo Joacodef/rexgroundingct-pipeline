@@ -1,4 +1,4 @@
-# Experiment Log 004: Statistical Analysis of ReXGroundingCT Masks [COMPLETED]
+# Experiment Log 004: [Phase 1] Statistical Analysis of ReXGroundingCT Masks [COMPLETED]
 
 > [!NOTE]
 > **PIVOT NOTICE:**  

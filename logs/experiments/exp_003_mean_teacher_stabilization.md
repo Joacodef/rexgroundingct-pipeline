@@ -1,4 +1,4 @@
-# Experiment Log 003: VoxTell v1.1 Mean Teacher Stabilization & Blackwell GPU Integration
+# Experiment Log 003: [Archived Pre-Pivot] VoxTell v1.1 Mean Teacher Stabilization & Blackwell GPU Integration
 
 > [!NOTE]
 > **PARALLEL SERVER EXECUTION NOTE:**  
