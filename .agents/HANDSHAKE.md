@@ -26,7 +26,7 @@ This document serves as an immediate operational and technical context bridge fo
 The Zero-Shot evaluation on the validation set initially yielded a **Dice of 0.0975**. 
 A single-scan test confirmed that the aggressive sliding window (`--tile_step_size 0.75`) was the root cause. Re-running with `0.5` restored the Dice score to **42.89%** on a large finding, resolving the anomaly.
 
-*Full details and metrics are logged in `logs/experiments/exp_005_voxtell_baseline_full_val.md`.*
+*Full details and metrics are logged in `logs/experiments/phase_1_baseline_profiling/exp_005_voxtell_baseline_full_val.md`.*
 
 ---
 
