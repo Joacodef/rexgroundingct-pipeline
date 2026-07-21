@@ -15,6 +15,9 @@ REX_PROJECT/
 │   ├── preprocessed/           # Standardized dataset (RAS, 1.5mm isotropic)
 │   ├── raw/                    # Original NIfTI volumes
 │   └── dataset.json            # Metadata, partitions (train/val/test) and prompts
+├── logs/                       # Execution logs and experiment reports
+│   ├── execution_raw/          # Raw stdout/stderr terminal dumps
+│   └── experiments/            # Documented experiment logs (Phase 1, Archived, etc.)
 ├── models/                     # Checkpoints and caches
 │   ├── .cache/                 # HuggingFace cache (e.g. Text Encoders)
 │   ├── voxtell_v1.0/           # VoxTell base checkpoint
@@ -26,6 +29,7 @@ REX_PROJECT/
 │   └── voxtell.txt             # Model-specific dependencies, CUDA and PyTorch compilation
 ├── scratch/                    # Temporary and experimental diagnostic tools
 │   ├── data_utils/             # Dataset metadata and downloading scripts
+│   ├── diagnostics/            # Diagnostic scripts for checking individual volumes
 │   ├── eval_scripts/           # Validation and metric checking scripts
 │   └── exp_004_analysis/       # Heatmaps and statistics for Exp 004
 ├── scripts/                    # Executable pipeline

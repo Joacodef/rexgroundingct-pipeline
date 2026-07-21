@@ -6,6 +6,7 @@ This directory contains experimental tools, temporary analysis scripts, and diag
 
 ### 1. `eval_scripts/`
 *   **`run_mean_teacher_val_eval.py`**: Auxiliary script to quantitatively evaluate specific Mean Teacher checkpoints. It generates 3D predictions using a sliding window for both the Student and Teacher (EMA) networks, calculates the global Dice coefficient on the validation set, and compares them against the zero-shot baseline (v1.1).
+*   **`eval_single.py`**: Validation script to test and log inference performance on single isolated volumes.
 
 ### 2. `data_utils/`
 *   **`diagnose_dataset.py`**: Diagnostic utility for inspecting dataset metadata, dimensionalities, and missing findings.
@@ -14,6 +15,9 @@ This directory contains experimental tools, temporary analysis scripts, and diag
 ### 3. `exp_004_analysis/`
 *   **`exp_004_heatmaps.py`**: Script to generate Coronal and Axial Maximum Intensity Projections (MIP) to visualize the spatial distribution of findings.
 *   **`exp_004_stats.py`**: Script to compute descriptive statistics comparing the sparse Train annotations against the exhaustive Val+Test annotations.
+
+### 4. `diagnostics/`
+*   **`check_volume_*.py`**: Scripts containing diagnostic utilities for asserting metadata, spatial orientations, and tensor sanity of individual CT volumes (e.g. volume 38, 53).
 
 ## Execution Notes
 
