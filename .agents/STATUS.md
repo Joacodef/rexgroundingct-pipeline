@@ -7,7 +7,7 @@
 
 ## 1. Summary of Progress
 
-### 📈 Experiment 005: VoxTell v1.1 Second Baseline Verification (Active)
+### 📈 Experiment 005: [Phase 1] VoxTell v1.1 Second Baseline Verification (Active)
 *   **Dataset:** Evaluated against the complete set of 200 validation masks (released July 2026).
 *   **Inference Execution:** Successfully generated raw 4D NIfTI predictions on all 200 validation scans using a memory-leak-safe Bash Chunking Wrapper on the RTX PRO 6000 Blackwell GPU.
 *   **Performance Anomaly:** The zero-shot evaluation yielded an **Average Dice of 0.0975** and a **Hit Rate of 24.14%**. This is a severe degradation compared to the leaderboard scores (>0.20) for the exact same pre-trained weights (`ibrahimhamamci/voxtell_v1.1`).
