@@ -55,7 +55,7 @@ The pipeline is deployed across three environments: `jumbito` (compute.pln.ville
 *   **Experiment C:** Naive pseudo-labeling using the baseline model to fill in missing annotations, followed by standard training.
 
 ### Phase 3: Methodological Re-Evaluation (October) - ⏳ PENDING
-*   Re-evaluate Gao/Wolny (SPOCO/MPR) techniques. Implement one at a time if necessary.
+*   Re-evaluate Gao/Wolny (SPOCO/MPR) techniques. Implement one at a time if necessary. *(Note: We will revisit the archived `exp_002` and `exp_003` logs as reference for the Mean Teacher collapse and stabilization behaviors).*
 *   Explore simpler Positive-Unlabeled (PU) learning techniques as alternatives.
 
 ### Phase 4: Scaling and Paper Writing (November - December) - ⏳ PENDING
