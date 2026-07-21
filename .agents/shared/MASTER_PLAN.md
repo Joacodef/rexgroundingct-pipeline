@@ -4,13 +4,14 @@
 
 ---
 
-## 🔬 1. Methodological Strategy (The Paper's "Contribution")
+## 🔬 1. Methodological Strategy: Step-by-Step Empirical Approach
 
-The training dataset has partial annotations (maximum of 3 instances per finding), whereas validation and test phases require exhaustive segmentation. To leverage this without being penalized by models that assume complete masks:
+The previous strategy attempted a complex architecture (Mean Teacher + SPOCO + MPR Loss) that lacked empirical justification for each component. The new roadmap shifts to a strictly empirical, step-by-step methodology, focusing first on baseline error diagnosis before implementing any modifications.
 
-1. **Baseline:** VoxTell v1.1 (Frozen Text Encoder, decoder fine-tuning).
-2. **Strong Supervision (ROIs):** Apply DiceCE loss only within dilated regions around the annotated instances (adapting the SPOCO principle from Wolny et al. 2022).
-3. **Weak Supervision (Unannotated regions):** Implement a Mean Teacher framework. Apply MPR loss (SOUSA, Gao et al. 2022) over 3D max projections to penalize student false positives in unannotated areas, ensuring spatial consistency.
+1. **Untouchable Baseline:** VoxTell v1.1 will be tested as the initial hypothesis.
+2. **Micro-Experiments:** We will test isolated, measured improvements (e.g., modifying the loss function slightly to measure suppression bias) rather than massive architectural changes.
+3. **Data-Centric Focus:** Instead of model architecture overhauls, we will explore post-processing, thresholding, and naive pseudo-labeling techniques on partial annotations.
+4. **Architectural Pivot (Contingency):** If error profiling reveals that VoxTell's pre-trained embeddings are fundamentally broken due to the "Instance Suppression Bias", we will pivot to building a lightweight text-conditioned model from scratch (e.g., nnU-Net).
 
 ---
 
@@ -42,18 +43,22 @@ The pipeline is deployed across three environments: `jumbito` (compute.pln.ville
 
 ## 🗓️ 3. Project Timeline & Status (Updated: July 2026)
 
-### Phase 1: Securing Baseline and Methodology (May - June) - ✅ COMPLETED
-* **Setup:** Environment secured with frozen dependencies on `jumbito`.
-* **Preprocessing:** Bypassed/deprecated 1.5mm resampling. Execution runs strictly in native CT resolution.
-* **Spatial Alignment:** Addressed the Identity Affine metadata bug in the Ground Truth segmentations via 4D Back-Reorientation.
-* **Baseline Inference:** Native resolution batch inference with VoxTell v1.1 achieved a baseline of `~0.2138` Dice score and `~48.70%` Hit Rate.
+### Phase 1: Baseline Error Profiling & Alternative Scouting (July) - 🟢 ACTIVE
+*   **Quantitative Error Analysis:** Bucket errors by finding size, finding type, and anatomical region.
+*   **Qualitative Error Analysis:** Visually inspect the worst-performing volumes to identify systematic biases (e.g., hallucinated masks, boundary issues, or Instance Suppression Bias).
+*   **Alternative Model Scouting:** Identify and evaluate "pristine" foundation models (e.g., MedSAM, text-conditioned nnU-Net) that have never been fine-tuned on ReXGroundingCT masks, ensuring we have a clean slate ready for a potential pivot.
+*   **Goal:** Decide if VoxTell is salvageable or if a pivot to the alternative pristine model is required.
 
-### Phase 2: Mean Teacher Stabilization (Experiment 003) - ✅ COMPLETED
-* **Integration:** Integrated the Teacher model's EMA update into the VoxTell training loop.
-* **Stabilization:** Successfully diagnosed and patched the `fp16` underflow bug (NaN crash at Epoch 26) by applying L2 Gradient Norm Clipping, float32 upcasting, and softening consistency scaling.
-* **Result:** Reached Epoch 50 successfully without NaNs. Model weights are generalized and ready for inference.
+### Phase 2: Micro-Experiments & Data-Centric Tweaks (August - September) - ⏳ PENDING
+*   **Experiment A:** Train VoxTell with standard DiceCE to measure exact degradation caused by suppression bias.
+*   **Experiment B:** Test thresholding, connected component filtering, or morphological operations.
+*   **Experiment C:** Naive pseudo-labeling using the baseline model to fill in missing annotations, followed by standard training.
 
-### Phase 3: Post-Launch Challenge Phase (July - September) - 🟢 ACTIVE
-* **Official Evaluation (Task C):** Generate the first submission over the test split using the generalized weights from Experiment 003 and evaluate against the official leaderboard.
-* **Ablation Studies:** Train variants by disabling the consistency loss or varying the weights to test the methodological impact for the paper.
-* **Ensembling:** Combine the hybrid model with standard fine-tuned versions or average multi-scale inferences for the final submission.
+### Phase 3: Methodological Re-Evaluation (October) - ⏳ PENDING
+*   Re-evaluate Gao/Wolny (SPOCO/MPR) techniques. Implement one at a time if necessary.
+*   Explore simpler Positive-Unlabeled (PU) learning techniques as alternatives.
+
+### Phase 4: Scaling and Paper Writing (November - December) - ⏳ PENDING
+*   Scale the winning combination of micro-experiments to the full dataset on SLURM.
+*   Perform hyperparameter sweeps on the stabilized architecture.
+*   Draft the MICCAI paper centered on systematically evaluating partial-annotation solutions.

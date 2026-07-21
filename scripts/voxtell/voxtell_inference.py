@@ -15,6 +15,8 @@ Input/Output Contract:
 
 
 import os
+import gc
+import ctypes
 import json
 import argparse
 import torch
@@ -50,6 +52,8 @@ def main():
                         help="Load teacher_state_dict instead of student_state_dict if custom checkpoint is specified")
     parser.add_argument("--tile_step_size", type=float, default=0.5,
                         help="Step size for sliding window inference (default: 0.5 = 50% overlap, increase to speed up)")
+    parser.add_argument("--start_idx", type=int, default=0, help="Start index for processing dataset entries")
+    parser.add_argument("--end_idx", type=int, default=None, help="End index for processing dataset entries (exclusive)")
     args = parser.parse_args()
 
     # Inject paths from .env file
@@ -118,12 +122,21 @@ def main():
         print(f"[WARNING] No cases found for split '{args.split}'. Check dataset.json structure.")
         return
 
+    # Apply chunking bounds
+    end_idx = args.end_idx if args.end_idx is not None else len(entries)
+    entries = entries[args.start_idx:end_idx]
+    
     missing_files_count = 0
 
     # Batch Inference Loop
-    for entry in tqdm(entries, desc=f"Evaluating {args.split} Scans"):
+    for entry in tqdm(entries, desc=f"Evaluating {args.split} Scans [{args.start_idx}:{end_idx}]"):
         scan_id = entry.get("name", "").replace(".nii.gz", "")
         if not scan_id:
+            continue
+            
+        out_path = os.path.join(output_dir, f"{scan_id}.nii.gz")
+        if os.path.exists(out_path):
+            tqdm.write(f"[INFO] Prediction already exists for {scan_id}. Skipping.")
             continue
             
         nifti_path = os.path.join(img_raw_dir, f"{scan_id}.nii.gz")
@@ -176,13 +189,23 @@ def main():
         pred_nib_back = pred_nib.as_reoriented(from_canonical)
         
         # 5. Extract data and transpose back to (F, X, Y, Z) to preserve original shape contract
-        pred_back_data = pred_nib_back.get_fdata().astype(np.uint8) # shape: (X, Y, Z, F)
+        # Use dataobj instead of get_fdata() to avoid a massive float64 memory spike
+        pred_back_data = np.asanyarray(pred_nib_back.dataobj).astype(np.uint8) # shape: (X, Y, Z, F)
         pred_back_fxyz = np.transpose(pred_back_data, (3, 0, 1, 2)) # shape: (F, X, Y, Z)
         
         # Save prediction with the original raw image affine
         out_nii = nib.Nifti1Image(pred_back_fxyz, original_affine)
         out_path = os.path.join(output_dir, f"{scan_id}.nii.gz")
         nib.save(out_nii, out_path)
+        
+        # Explicit memory cleanup to prevent OS OOM killer
+        del img, voxtell_seg, pred_xyzf, pred_nib, pred_nib_back, pred_back_data, pred_back_fxyz, out_nii
+        gc.collect()
+        # Force glibc to return freed memory to the OS (solves Python memory fragmentation)
+        try:
+            ctypes.CDLL("libc.so.6").malloc_trim(0)
+        except Exception:
+            pass
 
     if missing_files_count > 0:
         print(f"\n[INFO] Inference completed. Skipped {missing_files_count} missing files.")
