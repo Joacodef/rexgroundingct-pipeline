@@ -1,4 +1,4 @@
-# Handshake: Transition to Phase 4 / Baseline Debugging
+# Handshake: Phase 1 / Baseline Debugging
 
 This document serves as an immediate operational and technical context bridge for the new chat session.
 
@@ -35,5 +35,5 @@ A single-scan test confirmed that the aggressive sliding window (`--tile_step_si
 ### Task A: Rerun Full Baseline Validation (Active / Waiting)
 *   **Status:** We are currently **WAITING** for the 200-scan validation batch to finish. 
 *   **Action for Next Session:** Check `logs/voxtell_val_0.5.log` to see if inference is complete. Once done, read `logs/eval_bucketed_0.5.log` to get the final benchmark Dice.
-### Task B: Proceed to Phase 4 (Qualitative Analysis)
+### Task B: Proceed with Phase 1 (Qualitative Analysis)
 *   Once the baseline numbers are officially regenerated, identify the 5 worst-performing scans and generate heatmaps.
