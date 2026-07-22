@@ -1,43 +1,38 @@
 # Project Status: ReXGroundingCT Challenge
 
-**Date:** July 15, 2026  
-**Associated Phase:** Phase 1 - Baseline Error Profiling & Alternative Scouting
+**Date:** July 22, 2026  
+**Associated Phase:** Phase 1 (Baseline Error Profiling Completed) -> Transition to Phase 2 (Fine-Tuning)
 
 ---
 
 ## 1. Summary of Progress
 
-### 📈 Experiment 005: [Phase 1] VoxTell v1.1 Second Baseline Verification (Active)
-*   **Dataset:** Evaluated against the complete set of 200 validation masks (released July 2026).
-*   **Inference Execution:** Successfully generated raw 4D NIfTI predictions on all 200 validation scans using a memory-leak-safe Bash Chunking Wrapper on the RTX PRO 6000 Blackwell GPU.
-*   **Performance Anomaly:** The zero-shot evaluation yielded an **Average Dice of 0.0975** and a **Hit Rate of 24.14%**. This is a severe degradation compared to the leaderboard scores (>0.20) for the exact same pre-trained weights (`ibrahimhamamci/voxtell_v1.1`).
-*   **Error Bucketing (Quantitative Analysis):** 
-    *   Small findings (<1k voxels) dropped to ~7% Dice.
-    *   Massive entities (e.g., Effusions) scored up to 25% Dice.
-    *   The model suffers from severe *Instance Suppression Bias*, but the drop to 9.7% suggests technical implementation errors in the evaluation pipeline.
+### 📈 Experiment 005: [Phase 1] VoxTell v1.1 Second Baseline Verification & Text Shift Analysis
+*   **Dataset:** Evaluated against all 200 validation masks (released July 2026).
+*   **Empirical 4D Back-Reorientation Audit:** Confirmed coordinate mapping in `voxtell_inference.py` is mathematically correct (centroid diffs ~6 voxels; pleural effusion Dice reaches 0.6240).
+*   **Split Evaluation Results (Raw vs Normalized Prompts):**
+    *   **First 50 Scans (Paper Val Split):** **0.2139 Raw Dice** vs **0.2015 Normalized Dice** *(replicates paper benchmark ~0.21)*
+    *   **Next 150 Scans (New MICCAI Val Split):** **0.0491 Raw Dice** vs **0.0402 Normalized Dice** *(severe zero-shot text shift)*
+    *   **Combined 200 Scans:** **0.0988 Raw Dice** vs **0.0889 Normalized Dice**
+*   **Key Diagnostic Finding & Solution:**
+    *   Quantified prompt text shift (`logs/experiments/phase_1_baseline_profiling/text_shift_analysis_report.md`): Max prompt length spiked from 21 -> 35 words; comma rate more than doubled (11.3% -> 23.7%).
+    *   Preliminary observations indicate that VoxTell's pre-trained text encoder is sensitive to verbose clinical sentences (*"Stable, nonspecific 6 mm..."* -> **0.0000 Dice**), while targeted entity queries (*"pulmonary nodule"*) recovered zero predictions up to **`0.4124` Dice** on single-finding test cases.
+    *   Evaluated prompt normalization across all 200 scans, confirming that prompt engineering alone yields mixed results across diverse findings.
 
-### 🧪 Technical Hypotheses for Baseline Degradation
-1.  **Aggressive Sliding Window:** To speed up inference, the chunking wrapper used `--tile_step_size 0.75` (25% overlap). This likely destroyed context at the patch boundaries, obliterating the performance on small and medium findings.
-2.  **Affine Orientation Alignment:** A potential discrepancy between how `voxtell_inference.py` back-reorients the predictions to the original scan space vs. how the official evaluation script processes the identity affine bug in the Ground Truth masks.
 
 ---
 
 ## 2. Current Operational Status
 
-*   **Active Processes:** Running full 200-scan baseline validation using `0.5` tile step size via bash chunking wrapper.
-*   **Hardware Allocation:** All inference operations are strictly pinned to **GPU 1** via `.env` (`CUDA_VISIBLE_DEVICES=1`). The previous zombie processes on the 48GB GPU 0 have been killed.
+*   **Active Status:** Phase 1 Baseline Profiling 100% Completed. Phase 2 (Fine-Tuning Execution) Ready to Launch.
+*   **Hardware Allocation:** Pinned to **GPU 1** via `.env` (`CUDA_VISIBLE_DEVICES=1`).
+*   **Key Reports & Artifacts Generated:** `logs/experiments/phase_1_baseline_profiling/text_shift_analysis_report.md`, `scripts/voxtell/prompt_normalizer.py`, `scratch/phase_1_baseline_profiling/fast_200_eval.py`.
 
 ---
 
-## 3. Remaining Work Plan (Next Immediate Steps)
+## 3. Remaining Work Plan (Hypotheses to Test in Phase 2)
 
-### Task A: Rerun Full Baseline Validation (Active)
-*   **Action:** Execute the full 200-scan validation batch again using `--tile_step_size 0.5` via the chunking wrapper.
-*   **Goal:** Re-establish the baseline with the correct overlap, expecting the Dice to recover above `>0.20` as proven by the single-scan test.
-
-### Task B: Qualitative Error Analysis (Visual Inspection)
-*   Once the baseline numbers are technically sound (or if the anomaly persists), identify the 5 worst-performing scans from the validation set.
-*   Extract 2D slices/heatmaps to visually inspect whether VoxTell generates hallucinated garbage masks or simply outputs empty zero-tensors (confirming the extreme False Negative rate of the Instance Suppression Bias).
-
-### Task C: Proceed to Phase 2
-*   Depending on the outcome of the qualitative analysis, formulate the first set of micro-experiments (e.g., modifying the standard loss function or applying thresholding/pseudo-labeling).
+### Task A: Establish Empirical Baseline Fine-Tuning Pipeline
+*   Verify preprocessed training dataset cache on fast SSD `/tmp/jdeferrari/rexgroundingct_preprocessed/`.
+*   Build minimal fine-tuning pipeline (`scripts/train/train_voxtell_baseline.py`) to empirically measure fine-tuning impact on GPU 1.
+*   Test Hypothesis 1 (Fine-Tuning Weight Updates) and Hypothesis 2 (Positive-Unlabeled / SPOCO Loss) step-by-step with metric tracking on validation split.

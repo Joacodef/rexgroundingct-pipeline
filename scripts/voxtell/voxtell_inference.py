@@ -33,9 +33,12 @@ load_dotenv(override=True)
 # 1. Strictly isolate GPU (Node policy) MUST happen before VoxTell/nnU-Net imports
 # Note: CUDA_VISIBLE_DEVICES must be explicitly set in the environment or .env
 
-# Import VoxTell dependencies after setting environment variables
+import sys
 from voxtell.inference.predictor import VoxTellPredictor
 from nnunetv2.imageio.nibabel_reader_writer import NibabelIOWithReorient
+
+sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+from scripts.voxtell.prompt_normalizer import clean_finding_prompt
 
 def main():
     # Parse CLI arguments for split selection
@@ -52,9 +55,14 @@ def main():
                         help="Load teacher_state_dict instead of student_state_dict if custom checkpoint is specified")
     parser.add_argument("--tile_step_size", type=float, default=0.5,
                         help="Step size for sliding window inference (default: 0.5 = 50% overlap, increase to speed up)")
+    parser.add_argument("--normalize_prompts", action="store_true", default=True,
+                        help="Normalize free-text prompts to strip non-diagnostic clinical modifiers (default: True)")
+    parser.add_argument("--no_normalize_prompts", action="store_false", dest="normalize_prompts",
+                        help="Disable prompt normalization")
     parser.add_argument("--start_idx", type=int, default=0, help="Start index for processing dataset entries")
     parser.add_argument("--end_idx", type=int, default=None, help="End index for processing dataset entries (exclusive)")
     args = parser.parse_args()
+
 
     # Inject paths from .env file
     download_dir = os.environ["MODEL_DIR"]
@@ -167,9 +175,13 @@ def main():
         else:
             text_prompts = [f['text'] if isinstance(f, dict) else f for f in findings]
         
+        if args.normalize_prompts:
+            text_prompts = [clean_finding_prompt(p) for p in text_prompts]
+        
         # Inference
         with torch.no_grad():
             voxtell_seg = predictor.predict_single_image(img, text_prompts) # shape: (F, Z, Y, X)
+
             
         # Reorient 4D prediction back to original image space
         # 1. Transpose from (F, Z, Y, X) to (X, Y, Z, F) in RAS space
