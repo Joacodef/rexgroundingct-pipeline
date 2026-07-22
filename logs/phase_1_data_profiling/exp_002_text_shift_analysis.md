@@ -1,4 +1,4 @@
-# Quantitative Analysis of Validation Prompt Text Shift (Cases 1–50 vs Cases 51–200)
+# Experiment Log 002: [Phase 1] Quantitative Analysis of Validation Prompt Text Shift
 
 **Date**: July 22, 2026  
 **Purpose**: Document the free-text prompt syntax, phrasing, and vocabulary distribution shift between the original 50-scan paper validation split and the 150-scan new MICCAI challenge validation split.

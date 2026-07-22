@@ -1,4 +1,4 @@
-# Experiment 005: [Phase 1] VoxTell v1.1 Second Baseline Verification & Split Breakdown
+# Experiment Log 003: [Phase 2] VoxTell v1.1 Second Baseline Verification & Split Breakdown
 
 **Date**: July 15, 2026 (Updated July 21, 2026)  
 **Purpose**: Second verification of official `voxtell_v1.1` zero-shot performance across all 200 validation masks (released July 2026), including empirical 4D Back-Reorientation coordinate audit and split performance profiling.
@@ -36,12 +36,12 @@
 
 ---
 
-## 4. Key Scientific Conclusions & Working Hypotheses for Phase 2
+## 4. Key Scientific Conclusions & Working Hypotheses for Phase 3
 
 1. **Paper Baseline Replicated**: `voxtell_v1.1` perfectly matches the `0.2139` paper validation benchmark on the original 50-scan paper split.
 2. **Text Shift Diagnosed**: Prompt normalization removes OOD text conditioning failures on isolated findings, but universal regex stripping yields mixed overall results across all 266 findings.
-3. **Hypothesis 1 (Weight Fine-Tuning Impact)**: We hypothesize that fine-tuning VoxTell's model weights on the 1,000 ReXGroundingCT training volumes will improve validation Dice on cases 51–200.
-4. **Hypothesis 2 (Partial Annotation / Unlabeled Loss)**: We hypothesize that partial annotations in the training set introduce an instance suppression bias, and that loss functions treating unannotated regions as unlabelled (such as Positive-Unlabeled or SPOCO masked loss) will stabilize training without suppressing valid predictions.
+3. **Hypothesis 1 (Weight Fine-Tuning Impact)**: We hypothesize that fine-tuning VoxTell's model weights on the 1,000 ReXGroundingCT training volumes in Phase 3 will improve validation Dice on cases 51–200.
+4. **Hypothesis 2 (Partial Annotation / Unlabeled Loss)**: We hypothesize that partial annotations in the training set introduce an instance suppression bias, and that Phase 3 loss functions treating unannotated regions as unlabelled (such as Positive-Unlabeled or SPOCO masked loss) will stabilize training without suppressing valid predictions.
 
 
 

@@ -63,7 +63,7 @@ wandb/
 logs/*
 !logs/phase_1_data_profiling/
 !logs/phase_2_inference_audit/
-!logs/archived_proof_of_concept/
+!logs/phase_3_fine_tuning/
 checkpoints/
 nohup.out
 screenlog.0

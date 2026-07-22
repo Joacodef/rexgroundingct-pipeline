@@ -1,4 +1,4 @@
-# Experiment Log 004: [Phase 1] Statistical Analysis of ReXGroundingCT Masks [COMPLETED]
+# Experiment Log 001: [Phase 1] Statistical Analysis of ReXGroundingCT Masks [COMPLETED]
 
 > [!NOTE]
 > **PIVOT NOTICE:**  
@@ -21,4 +21,4 @@ Perform a comprehensive statistical and visual analysis of the ReXGroundingCT da
 All visual artifacts and statistical insights have been documented in the project documentation folder. 
 The findings validate the Positive-Unlabeled (PU) strategy we employed in earlier experiments, as the Train set is verified to be sparsely annotated (average ~1 finding per scan) while Validation is exhaustively annotated (average ~3 findings per scan).
 
-* **Detailed Report:** [`docs/data_analysis_walkthrough.md`](file:///home/jdeferrari/rex_project/docs/data_analysis_walkthrough.md)
+* **Detailed Analysis Scripts:** `scripts/data_analysis/dataset_stats.py` and `scripts/data_analysis/mask_heatmaps.py`

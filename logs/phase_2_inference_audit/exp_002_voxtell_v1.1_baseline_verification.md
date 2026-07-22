@@ -1,4 +1,4 @@
-# Experiment Log 001: [Phase 1] VoxTell v1.1 Zero-Shot Validation & Baseline Verification
+# Experiment Log 002: [Phase 2] VoxTell v1.1 Zero-Shot Validation & Baseline Verification
 
 * **Date:** May 21, 2026 (Initial) & May 27, 2026 (Re-run Verification)  
 

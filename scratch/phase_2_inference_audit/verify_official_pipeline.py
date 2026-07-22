@@ -1,5 +1,6 @@
 import os
 import json
+import tempfile
 import torch
 import numpy as np
 import nibabel as nib
@@ -81,7 +82,7 @@ def main():
         print("Transpose (0, 2, 1, 3) vs GT:", [compute_dice(seg_fxyz_2[c], gt_data[c]) for c in range(len(raw_prompts))])
 
     # Permutation 4: Apply official write_seg back-reorientation
-    out_tmp = f"/tmp/test_{scan_id}_official.nii.gz"
+    out_tmp = os.path.join(tempfile.gettempdir(), f"test_{scan_id}_official.nii.gz")
     # write_seg expects 3D or 4D?
     # Let's test writing channel 0
     reader.write_seg(raw_seg[0], out_tmp, props)

@@ -3,9 +3,10 @@
 Repository for participating in the **ReXGrounding Challenge @ MICCAI 2026**. The primary task is 3D segmentation of radiological findings in thoracic CT scans from free-text descriptions (free-text finding grounding).
 
 > [!IMPORTANT]
-> **Active Research Focus**: All model fine-tuning (SPOCO, MPR consistency, Mean Teacher) is **POSTPONED**. The repository is 100% centered on:
-> 1. **In-Depth ReXGroundingCT Data Analysis**: Profiling 3D CT images, ground-truth masks (sparse training set vs exhaustive validation set), 14 finding categories, component volumes, and NLP prompt syntax.
-> 2. **VoxTell Zero-Shot Inference & Preprocessing Audit**: Evaluating official `NibabelIOWithReorient` and `VoxTellPredictor` execution, sliding window tile overlap, probability logit magnitudes, and per-category failure modes.
+> **Phased Research Roadmap**:
+> 1. **Phase 1 — ReXGroundingCT Data Analysis**: Profiling 3D CT images, ground-truth masks (sparse training set vs exhaustive validation set), 14 finding categories, component volumes, and NLP prompt syntax.
+> 2. **Phase 2 — VoxTell Zero-Shot Inference & Preprocessing Audit**: Evaluating official `NibabelIOWithReorient` and `VoxTellPredictor` execution, sliding window tile overlap, probability logit magnitudes, and per-category failure modes.
+> 3. **Phase 3 — Model Fine-Tuning & Consistency Adaptations**: Adapting VoxTell weights with partial-annotation loss functions (SPOCO, MPR consistency, Mean Teacher).
 
 ---
 
@@ -23,12 +24,14 @@ REX_PROJECT/
 ├── logs/                       # Phase-organized logs and experiment reports
 │   ├── phase_1_data_profiling/ # Phase 1 data analysis logs
 │   ├── phase_2_inference_audit/# Phase 2 zero-shot inference audit logs
-│   └── archived_proof_of_concept/
+│   └── phase_3_fine_tuning/    # Phase 3 model fine-tuning logs
+│       └── proof_of_concept/   # Early exploratory proof-of-concept logs
 ├── models/                     # Checkpoints and pretrained weights
 ├── scratch/                    # Phase-organized diagnostic scripts
 │   ├── phase_1_data_profiling/ # Phase 1 prompt shift diagnostic scripts
 │   ├── phase_2_inference_audit/# Phase 2 zero-shot evaluation tools
-│   └── archived_proof_of_concept/
+│   └── phase_3_fine_tuning/    # Phase 3 exploratory fine-tuning scripts
+│       └── proof_of_concept/   # Exploratory training & evaluation tools
 ├── scripts/                    # Production pipeline scripts
 │   ├── data_analysis/          # Dataset statistics & spatial heatmap generators
 │   ├── data_prep/              # MONAI data preprocessing pipeline
@@ -41,7 +44,7 @@ REX_PROJECT/
 
 ## ⚙️ Environment Setup & Hardware Isolation
 
-The pipeline uses environment-based hardware isolation (`CUDA_VISIBLE_DEVICES`) to pin execution to target host GPUs. Specific hardware topology and server setup instructions are documented in [.agents/server_documentation.txt](file://.agents/server_documentation.txt).
+The pipeline uses environment-based hardware isolation (`CUDA_VISIBLE_DEVICES`) to pin execution to target host GPUs. Specific hardware topology and server setup instructions are documented in `.agents/server_documentation.txt`.
 
 ### 1. Environment Configuration (`.env`)
 The pipeline relies strictly on environment variables for path resolution:

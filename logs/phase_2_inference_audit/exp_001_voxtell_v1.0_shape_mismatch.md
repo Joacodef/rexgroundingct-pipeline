@@ -1,4 +1,4 @@
-# Experiment Log 000: VoxTell v1.0 - Resampled Preprocessing Failure and Catastrophic Spatial Disalignment
+# Experiment Log 001: [Phase 2] VoxTell v1.0 - Resampled Preprocessing Failure and Catastrophic Spatial Disalignment
 
 * **Date:** May 17, 2026  
 
@@ -13,7 +13,7 @@
 > 1. **Catastrophic Spatial Mismatch:** A metadata bug in the official ground-truth labels combined with axis-swapping inside the nnU-Net reader completely scrambled the spatial coordinate alignment between predictions and ground truths.
 > 2. **Severe Normalization OOD Shift:** Downsampling to 1.5mm isotropic spacing and applying custom lung-window clipping (`[-1000, 400]`) with localized Z-scores created an out-of-distribution (OOD) intensity shift that blinded the zero-shot baseline model.
 >
-> **Action taken:** This resampled preprocessing pipeline has been permanently abandoned. We transitioned to a native-resolution, 4D Back-Reorientation pipeline in **[Experiment 001](file:///home/jdeferrari/rex_project/logs/experiments/exp_001_voxtell_v1.1_baseline_verification.md)**, which successfully restored alignment and achieved a baseline Average Dice of **`0.2139`**.
+> **Action taken:** This resampled preprocessing pipeline has been permanently abandoned. We transitioned to a native-resolution, 4D Back-Reorientation pipeline in `exp_002_voxtell_v1.1_baseline_verification.md`, which successfully restored alignment and achieved a baseline Average Dice of **`0.2139`**.
 
 ---
 
@@ -72,4 +72,4 @@ VoxTell was pre-trained using global, unclipped `ZScoreNormalization` calculated
 ### Final Paradigm Shift:
 The initial 1.5mm resampled preprocessing paradigm was **officially abandoned**. 
 
-The failures and mathematical lessons learned during this attempt directly motivated the design of **[Experiment 001](file:///home/jdeferrari/rex_project/logs/experiments/exp_001_voxtell_v1.1_baseline_verification.md)** (Native Resolution & 4D Back-Reorientation Pipeline). By preserving native high-resolution spacing, retaining global unclipped normalization, and mathematically reversing the RAS coordinate flips at inference time, Experiment 001 successfully raised the Average Dice to a reproducible baseline of **`0.2139`**.
+The failures and mathematical lessons learned during this attempt directly motivated the design of **[Experiment 001](exp_001_voxtell_v1.1_baseline_verification.md)** (Native Resolution & 4D Back-Reorientation Pipeline). By preserving native high-resolution spacing, retaining global unclipped normalization, and mathematically reversing the RAS coordinate flips at inference time, Experiment 001 successfully raised the Average Dice to a reproducible baseline of **`0.2139`**.

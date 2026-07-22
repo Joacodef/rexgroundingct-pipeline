@@ -10,6 +10,7 @@ At the start of **EVERY SINGLE SESSION**, you MUST immediately load, read, and f
 
 ### 🌐 Server-Agnostic File Separation Rule
 * **Shared vs. Host-Specific Scope**: `AGENTS.md` and files inside `.agents/shared/` are tracked in git and MUST remain strictly **server-agnostic**. They must never hardcode server-specific hardware topology, user home paths, specific GPU indices, or host machine names.
+* **Relative Path Directive**: ALL documentation, markdown files, and codebase scripts MUST strictly use **relative paths** (e.g., `scripts/data_prep/preprocess.py` or relative markdown links) and **NEVER absolute paths** (e.g., `file:///home/...` or `/home/user/...`). This ensures complete portability across different host servers, user environments, and IDEs.
 * **Host-Specific Configuration**: All host-specific hardware setups, GPU isolation parameters, virtual environment paths, fast SSD caching directories, and server connection guides MUST reside exclusively in local untracked files:
   - `STATUS.md` (Local active status and GPU pinning for the host)
   - `HANDSHAKE.md` (Local operational context for the host)

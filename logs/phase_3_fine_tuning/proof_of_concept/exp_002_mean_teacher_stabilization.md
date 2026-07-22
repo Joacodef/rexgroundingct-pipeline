@@ -1,4 +1,4 @@
-# Experiment Log 003: [Archived Pre-Pivot] VoxTell v1.1 Mean Teacher Stabilization & Blackwell GPU Integration
+# Experiment Log 002: [Phase 3] VoxTell v1.1 Mean Teacher Stabilization & Blackwell GPU Integration
 
 > [!NOTE]
 > **PARALLEL SERVER EXECUTION NOTE:**  
@@ -79,7 +79,7 @@ A fast 5-epoch smoke test was executed on GPU 1 (`CUDA_VISIBLE_DEVICES=2` mapped
   * **Epoch 3:** Train Loss `2.533676` | Val Loss `1.820312`
   * **Epoch 4:** Train Loss `4.741239` | Val Loss `2.382812`
   * **Epoch 5:** Train Loss `2.924622` | Val Loss `2.628906`
-* **Checkpoints:** Successfully compiled and saved [`models/checkpoint_mean_teacher_final.pth`](file:///home/jdeferrari/rex_project/models/checkpoint_mean_teacher_final.pth). No NaN values or explosions occurred.
+* **Checkpoints:** Successfully compiled and saved `models/checkpoint_mean_teacher_final.pth`. No NaN values or explosions occurred.
 
 ---
 
@@ -120,11 +120,11 @@ On May 31, 2026, we inspected the active persistent training run (`earthy-leaf-5
 1. **Epoch 1 Completed Successfully:** 
    * The training loop successfully completed all 2,992 iterations in **12 hours and 53 minutes**.
    * **Average training loss:** `2.867519` (Supervised: `2.867519`, Consistency: `0.039865`).
-   * The model compiled and successfully saved [`models/checkpoint_mean_teacher_latest.pth`](file:///home/jdeferrari/rex_project/models/checkpoint_mean_teacher_latest.pth) (6.2 GB).
+   * The model compiled and successfully saved `models/checkpoint_mean_teacher_latest.pth` (6.2 GB).
    * **Epoch 2 is currently active** and proceeding smoothly at **`3.72s/it`** (currently at 18% completion).
 
 2. **SSD Cache Population Complete (100%):**
-   * The dynamic caching loop has successfully compiled **6,087 files** in `/tmp/jdeferrari/rexgroundingct_preprocessed/volume_cache_8eddd9b8e145/`.
+   * The dynamic caching loop has successfully compiled **6,087 files** in fast SSD temporary storage (`/tmp/rexgroundingct_preprocessed/volume_cache_8eddd9b8e145/`).
    * This represents **100% completitud** of the dataset volumes (2,992 Train + 50 Val = 3,042 cases, with 2 files cached per case: `_img.pt` and `_seg.pt`).
    * **Disk Space:** The cache folder occupies **3.9 Terabytes** on the physical RAID SSD. 
    * **Systemd Policy Verification:** We confirmed that `/tmp` is mapped to the physical `/` RAID partition (not a memory-based `tmpfs` RAM disk) and that systemd has **no automatic age-based deletion policy** (configured as `-` age limit), ensuring full cache permanence.

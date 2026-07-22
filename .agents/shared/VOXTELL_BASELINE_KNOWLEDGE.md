@@ -1,7 +1,7 @@
 # VoxTell Baseline Knowledge & Inference Audit Reference
 
 > [!IMPORTANT]
-> This document details key specifications of the pre-trained **VoxTell** baseline model (`voxtell_v1.1`) and guidelines for its zero-shot inference audit. Fine-tuning experiments are **postponed** until data analysis and inference behavior are fully audited.
+> This document details key specifications of the pre-trained **VoxTell** baseline model (`voxtell_v1.1`) and guidelines for its zero-shot inference audit (Phase 2), providing the foundation for Phase 3 model fine-tuning.
 
 ---
 

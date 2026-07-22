@@ -55,7 +55,7 @@ def evaluate_single_scan(args):
 def main():
     load_dotenv(override=True)
     gt_dir = os.environ["SEG_RAW_DIR"]
-    pred_dir = "/tmp/jdeferrari/rexgroundingct_preprocessed/voxtell_val_normalized_preds"
+    pred_dir = os.environ.get("DATA_PRED_DIR", "data/predictions")
     dataset_json = os.environ["DATASET_JSON"]
 
     with open(dataset_json) as f:

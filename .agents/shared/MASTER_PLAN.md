@@ -3,9 +3,10 @@
 **Primary Goal:** Top-3 on the leaderboard (September 2026) AND an original paper accepted at MICCAI 2026, built on rigorous data understanding and zero-shot baseline inference mastery.
 
 > [!IMPORTANT]
-> **Strategic Focus Shift**: All fine-tuning experiments, loss modifications (SPOCO, MPR consistency), and training loops are **POSTPONED**. The repository and active research are 100% centered on:
-> 1. **In-Depth ReXGroundingCT Data Analysis** (images, 3D masks, free-text findings).
-> 2. **VoxTell Zero-Shot Inference & Preprocessing Audit** (inputs, spatial orientation, sliding window tile overlap, probability logits, and category-level failure modes).
+> **Phased Research Roadmap**:
+> 1. **Phase 1 — ReXGroundingCT Data Analysis**: 3D CT metadata, sparse vs exhaustive mask profiling, 14 finding categories, and prompt syntax.
+> 2. **Phase 2 — VoxTell Zero-Shot Inference & Preprocessing Audit**: Official `NibabelIOWithReorient` pipeline, sliding window tile overlap, continuous logit distributions, and failure modes.
+> 3. **Phase 3 — Model Fine-Tuning & Consistency Adaptations**: Supervised fine-tuning, Positive-Unlabeled (PU) SPOCO, and MPR consistency learning.
 
 ---
 
@@ -39,14 +40,13 @@
 * Profile raw logit probability distributions and optimal binarization thresholds per category.
 * Perform fine-grained error analysis across the 14 categories.
 
-### Phase 3: Fine-Tuning & Model Adaptations ⏳ POSTPONED
-* *Postponed until Data Analysis and Inference Audit are 100% completed and validated.*
-* Any future fine-tuning methods (standard supervised, Positive-Unlabeled, or consistency losses) will be formulated strictly as hypotheses to test step-by-step.
+### Phase 3: Fine-Tuning & Model Adaptations ⏳ UPCOMING
+* Adapting VoxTell weights with partial-annotation loss functions (standard supervised, Positive-Unlabeled, SPOCO, or MPR consistency losses).
+* Formulated step-by-step to address specific failure modes identified in Phase 1 & 2.
 
 ---
 
-## 🚫 3. Archived Proof-of-Concept Code
-All previous exploratory Mean Teacher / SPOCO training scripts and logs are archived in:
-* **`scripts/archived_proof_of_concept/`**: Legacy training scripts (`train_mean_teacher.py`).
-* **`logs/experiments/archived_proof_of_concept/`**: Legacy experiment logs (`exp_002`, `exp_003`).
-* **`scratch/archived_proof_of_concept/`**: Legacy scratch scripts.
+## 🔬 3. Phase 3 Fine-Tuning & Exploratory Proof-of-Concept Scripts
+Exploratory Mean Teacher / SPOCO training scripts and logs are organized in proof-of-concept subfolders:
+* **`logs/phase_3_fine_tuning/proof_of_concept/`**: Phase 3 proof-of-concept experiment logs (`exp_001`, `exp_002`).
+* **`scratch/phase_3_fine_tuning/proof_of_concept/`**: Phase 3 proof-of-concept training & evaluation scripts (`train_mean_teacher.py`, `evaluate_bucketed.py`).
