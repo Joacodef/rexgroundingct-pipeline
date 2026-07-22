@@ -13,35 +13,27 @@ Repository for participating in the **ReXGrounding Challenge @ MICCAI 2026**. Th
 
 ```text
 REX_PROJECT/
-├── .agents/                    # Agentic rules, status, and governance documentation
-│   ├── AGENTS.md               # Operating rules & Epistemic Modesty guidelines
-│   ├── HANDSHAKE.md            # Active transitional context bridge
-│   ├── STATUS.md               # Live project status
-│   └── shared/                 # Master plan & challenge rules
+├── .agents/                    # Agentic rules, host setup docs, and governance
+│   ├── shared/                 # Server-agnostic master plan and paper digests
+│   ├── AGENTS.md               # Repository operating rules & governance
+│   ├── server_documentation.txt# Host server hardware setup & guides
+│   ├── STATUS.md               # Local active state (untracked)
+│   └── HANDSHAKE.md            # Local operational context bridge (untracked)
 ├── data/                       # Data storage (4D volumes and metadata)
-│   ├── predictions/            # Inference outputs (4D masks in F,H,W,D format)
-│   ├── raw/                    # Original raw NIfTI volumes
-│   └── dataset.json            # Dataset partitions (train/val/test) and text prompts
-├── logs/                       # Execution logs and experiment reports
-│   ├── execution_raw/          # Raw terminal stdout/stderr dumps
-│   └── experiments/            # Documented experiment logs
-│       ├── phase_1_baseline_profiling/   # Active zero-shot & prompt analysis reports
-│       └── archived_proof_of_concept/    # Legacy preliminary experiment logs
+├── logs/                       # Phase-organized logs and experiment reports
+│   ├── phase_1_data_profiling/ # Phase 1 data analysis logs
+│   ├── phase_2_inference_audit/# Phase 2 zero-shot inference audit logs
+│   └── archived_proof_of_concept/
 ├── models/                     # Checkpoints and pretrained weights
-│   ├── voxtell_v1.0/           # Base VoxTell v1.0 checkpoint
-│   └── voxtell_v1.1/           # Pretrained VoxTell v1.1 checkpoint
-├── requirements/               # Dependency configurations
-│   └── voxtell.txt             # PyTorch, MONAI, transformers, and nnUNetv2 requirements
-├── scratch/                    # Diagnostic tools and analytical scripts
-│   ├── phase_1_baseline_profiling/   # Active data analysis & inference audit scripts
-│   └── archived_proof_of_concept/    # Archived legacy scratch tools
-├── scripts/                    # Executable pipeline scripts
-│   ├── voxtell/                # VoxTell inference pipeline and prompt normalizer
-│   │   ├── voxtell_inference.py# Batch zero-shot inference pipeline
-│   │   └── prompt_normalizer.py# Hybrid NLP prompt parsing module
-│   ├── evaluate.py             # Official metric evaluator (Dice, Hit Rate >= 0.1)
-│   └── archived_proof_of_concept/    # Archived legacy training scripts (train_mean_teacher.py)
-├── .env                        # Environment variable configuration (GPU 1 isolation, paths)
+├── scratch/                    # Phase-organized diagnostic scripts
+│   ├── phase_1_data_profiling/ # Phase 1 prompt shift diagnostic scripts
+│   ├── phase_2_inference_audit/# Phase 2 zero-shot evaluation tools
+│   └── archived_proof_of_concept/
+├── scripts/                    # Production pipeline scripts
+│   ├── data_analysis/          # Dataset statistics & spatial heatmap generators
+│   ├── data_prep/              # MONAI data preprocessing pipeline
+│   ├── voxtell/                # Zero-shot VoxTell inference pipeline
+│   └── evaluate.py             # Official challenge metric calculator
 └── README.md                   # Primary repository documentation
 ```
 
@@ -49,17 +41,17 @@ REX_PROJECT/
 
 ## ⚙️ Environment Setup & Hardware Isolation
 
-The pipeline is pinned to **GPU 1** (`NVIDIA RTX PRO 6000 Blackwell`, 96 GB VRAM) on the host system using the upgraded `.venv-voxtell` Python 3.13 environment with CUDA 12.8 support.
+The pipeline uses environment-based hardware isolation (`CUDA_VISIBLE_DEVICES`) to pin execution to target host GPUs. Specific hardware topology and server setup instructions are documented in [.agents/server_documentation.txt](file://.agents/server_documentation.txt).
 
 ### 1. Environment Configuration (`.env`)
 The pipeline relies strictly on environment variables for path resolution:
 
 ```env
-MODEL_DIR=/home/jdeferrari/rex_project/models/voxtell_v1.1
-SEG_RAW_DIR=/home/jdeferrari/rex_project/data/raw/masks
-IMG_RAW_DIR=/home/jdeferrari/rex_project/data/raw/images
-DATA_PRED_DIR=/home/jdeferrari/rex_project/data/predictions
-DATASET_JSON=/home/jdeferrari/rex_project/data/dataset.json
+MODEL_DIR=./models/voxtell_v1.1
+SEG_RAW_DIR=./data/raw/masks
+IMG_RAW_DIR=./data/raw/images
+DATA_PRED_DIR=./data/predictions
+DATASET_JSON=./data/dataset.json
 
 CUDA_VISIBLE_DEVICES=1
 DEFAULT_DEVICE=cuda:0
@@ -69,28 +61,35 @@ DEFAULT_DEVICE=cuda:0
 
 ## 🚀 Active Execution & Analysis Commands
 
-### 1. NLP Prompt Text Shift Analysis
+### 1. Dataset Statistical Analysis & Spatial Heatmaps
+Generate relative volume distributions, entity counts per finding, and 2D coronal/axial projection heatmaps across categories:
+```bash
+./.venv-voxtell/bin/python scripts/data_analysis/dataset_stats.py
+./.venv-voxtell/bin/python scripts/data_analysis/mask_heatmaps.py
+```
+
+### 2. NLP Prompt Text Shift Analysis
 Run quantitative NLP distribution analysis comparing free-text prompt syntax, word length, and adjective modifiers:
 ```bash
-./.venv-voxtell/bin/python scratch/phase_1_baseline_profiling/text_shift_analysis.py
+./.venv-voxtell/bin/python scratch/phase_1_data_profiling/text_shift_analysis.py
 ```
 
-### 2. Official Reader/Writer Pipeline Verification
+### 3. Official Reader/Writer Pipeline Verification
 Verify official `NibabelIOWithReorient` and `VoxTellPredictor` execution against raw ground-truth NIfTI masks:
 ```bash
-CUDA_VISIBLE_DEVICES=1 ./.venv-voxtell/bin/python scratch/phase_1_baseline_profiling/verify_official_pipeline.py
+CUDA_VISIBLE_DEVICES=1 ./.venv-voxtell/bin/python scratch/phase_2_inference_audit/verify_official_pipeline.py
 ```
 
-### 3. Batch Zero-Shot VoxTell Inference
-Run zero-shot inference across validation scans on GPU 1:
+### 4. Batch Zero-Shot VoxTell Inference
+Run zero-shot inference across validation scans:
 ```bash
 CUDA_VISIBLE_DEVICES=1 ./.venv-voxtell/bin/python scripts/voxtell/voxtell_inference.py --split val --tile_step_size 0.5
 ```
 
-### 4. Fast Multi-Threaded Validation Metric Calculation
+### 5. Fast Multi-Threaded Validation Metric Calculation
 Compute primary ranking metrics (Average Dice, Hit Rate $\ge 0.1$, Empty Preds) across prediction volumes:
 ```bash
-PYTHONPATH=. CUDA_VISIBLE_DEVICES=1 ./.venv-voxtell/bin/python scratch/phase_1_baseline_profiling/fast_200_eval.py
+PYTHONPATH=. CUDA_VISIBLE_DEVICES=1 ./.venv-voxtell/bin/python scratch/phase_2_inference_audit/fast_200_eval.py
 ```
 
 ---
@@ -98,4 +97,5 @@ PYTHONPATH=. CUDA_VISIBLE_DEVICES=1 ./.venv-voxtell/bin/python scratch/phase_1_b
 ## 📝 Governance & Epistemic Modesty Guidelines
 
 * **Epistemic Modesty**: All preliminary observations must use calibrated, modest phrasing (*"initial evidence suggests"*, *"preliminary tests indicate"*). Unproven fine-tuning methods are strictly framed as **hypotheses to be tested**.
-* **SSD Storage Caching**: Heavy runtime inputs and intermediate volumes reside on the fast SSD `/tmp` directory (`/tmp/jdeferrari/rexgroundingct_preprocessed/`).
+* **Server-Agnostic Rules**: Repository-wide code and documentation in git remain strictly server-agnostic. Host-specific hardware topologies, GPU assignments, and paths are kept in local `.agents/` documentation.
+* **SSD Storage Caching**: Heavy runtime inputs and intermediate volumes reside in fast local temporary storage specified in `.agents/server_documentation.txt`.

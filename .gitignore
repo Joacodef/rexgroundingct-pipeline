@@ -61,10 +61,9 @@ slurm-out
 # Training logs (Weights & Biases, TensorBoard, etc.)
 wandb/
 logs/*
-!logs/experiments/
+!logs/phase_1_data_profiling/
+!logs/phase_2_inference_audit/
+!logs/archived_proof_of_concept/
 checkpoints/
 nohup.out
 screenlog.0
-
-
-docs/
