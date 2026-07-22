@@ -1,64 +1,52 @@
 # Master Plan — ReXGroundingCT Challenge 2026
 
-**Primary Goal:** Top-3 on the leaderboard (September 2026) AND an original paper accepted at MICCAI 2026.
+**Primary Goal:** Top-3 on the leaderboard (September 2026) AND an original paper accepted at MICCAI 2026, built on rigorous data understanding and zero-shot baseline inference mastery.
+
+> [!IMPORTANT]
+> **Strategic Focus Shift**: All fine-tuning experiments, loss modifications (SPOCO, MPR consistency), and training loops are **POSTPONED**. The repository and active research are 100% centered on:
+> 1. **In-Depth ReXGroundingCT Data Analysis** (images, 3D masks, free-text findings).
+> 2. **VoxTell Zero-Shot Inference & Preprocessing Audit** (inputs, spatial orientation, sliding window tile overlap, probability logits, and category-level failure modes).
 
 ---
 
-## 🔬 1. Methodological Strategy: Step-by-Step Empirical Approach
+## 🔬 1. Core Research Pillars
 
-The previous strategy attempted a complex architecture (Mean Teacher + SPOCO + MPR Loss) that lacked empirical justification for each component. The new roadmap shifts to a strictly empirical, step-by-step methodology, focusing first on baseline error diagnosis before implementing any modifications.
+### Pillar A: Comprehensive ReXGroundingCT Data Analysis
+* **3D CT Image & Metadata Profiling**: Voxel spacings, orientation affines, physical dimensions, and intensity distributions.
+* **Exhaustive vs Sparse Mask Analysis**: Quantitative comparison of ground-truth mask distributions between the training set (partially annotated) and validation set (exhaustively annotated).
+* **The 14 Official Finding Categories**: Detailed error profiling across the 14 challenge categories:
+  * *Non-focal (6)*: Bronchial wall thickening, Bronchiectasis, Emphysema, Septal thickening, Micronodules, Other non-focal.
+  * *Focal (8)*: Linear opacities, Atelectasis / consolidation, Ground-glass opacity, Pulmonary nodules / masses, Pleural effusion / thickening, Honeycombing, Pneumothorax, Other focal.
+* **Finding Volume & Multi-Instance Statistics**: Distribution of component counts, voxel volumes, and spatial centroids per finding category.
+* **Free-Text Radiology Report Analysis**: Quantitative NLP analysis of finding descriptions in `dataset.json` (syntax, modifier adjectives, length, and anatomical jargon).
 
-1. **Untouchable Baseline:** VoxTell v1.1 will be tested as the initial hypothesis.
-2. **Micro-Experiments:** We will test isolated, measured improvements (e.g., modifying the loss function slightly to measure suppression bias) rather than massive architectural changes.
-3. **Data-Centric Focus:** Instead of model architecture overhauls, we will explore post-processing, thresholding, and naive pseudo-labeling techniques on partial annotations.
-4. **Architectural Pivot (Contingency):** If error profiling reveals that VoxTell's pre-trained embeddings are fundamentally broken due to the "Instance Suppression Bias", we will pivot to building a lightweight text-conditioned model from scratch (e.g., nnU-Net).
-
----
-
-## 💻 2. Operational Constraints and Considerations
-
-The pipeline is deployed across three environments: `jumbito` (compute.pln.villena.cl) and two SLURM-managed clusters.
-
-### Execution and Persistence 
-* **On `jumbito`:** In the absence of a queue manager, there is no job time limit. Long runs must use `tmux` (preferred over `screen`) or `nohup` (persistent execution).
-* **On SLURM clusters:** Jobs are subject to queue wait times and strict wall-clock limits. The training loop must include checkpoint saving and resumption to recover from preemptions.
-
-### I/O and Storage Management
-* Massive 4D NIfTI processing must be isolated in fast, local filesystems (`/tmp` on `jumbito`; node-local scratch like `$SLURM_TMPDIR` on SLURM). 
-* Temporary filesystems have automated deletion policies, so final artifacts must be synchronized to permanent storage at the end of every run.
-
-### Execution Environment
-* Use `uv` and virtual environments for strict dependency isolation. 
-* If containerizing, note that SLURM clusters typically require Apptainer/Singularity, whereas `jumbito` supports rootless Docker.
-
-### Multi-GPU Control (DDP)
-* Resource allocation must be manual using `CUDA_VISIBLE_DEVICES`. 
-* To avoid the `Address already in use` socket error when other users run distributed tasks, a dynamic or non-default `MASTER_PORT` (other than 29500) must be assigned in the launch scripts.
-
-### Submission Format
-* Mandatory 4D NIfTI identical to the original ground truth. 
-* Post-inference stacking and **4D Back-Reorientation** must be robust to align with the original CT coordinate space.
+### Pillar B: In-Depth VoxTell Inference & Preprocessing Audit
+* **Official Preprocessing & Reorientation**: Audit official `nnunetv2.imageio.nibabel_reader_writer.NibabelIOWithReorient` and `VoxTellPredictor` to ensure 100% fidelity with the authors' intended input pipeline.
+* **Sliding Window Hyperparameter Sensitivity**: Evaluate tile step size (`tile_step_size` 0.5 vs 0.25), Gaussian tile weighting, and patch padding on prediction quality.
+* **Continuous Logit & Threshold Profiling**: Analyze raw sigmoid output probabilities prior to binarization (`> 0.5`) to determine whether false negatives are caused by low probability magnitude or spatial misalignment.
+* **Category-Level Failure Mode Profiling**: Systematically identify which of the 14 categories succeed zero-shot and which fail, analyzing spatial and text characteristics of failure cases.
 
 ---
 
-## 🗓️ 3. Project Timeline & Status (Updated: July 2026)
+## 🗓️ 2. Project Roadmap
 
-### Phase 1: Baseline Error Profiling & Alternative Scouting (July) - 🟢 ACTIVE
-*   **Quantitative Error Analysis:** Bucket errors by finding size, finding type, and anatomical region.
-*   **Qualitative Error Analysis:** Visually inspect the worst-performing volumes to identify systematic biases (e.g., hallucinated masks, boundary issues, or Instance Suppression Bias).
-*   **Alternative Model Scouting:** Identify and evaluate "pristine" foundation models (e.g., MedSAM, text-conditioned nnU-Net) that have never been fine-tuned on ReXGroundingCT masks, ensuring we have a clean slate ready for a potential pivot.
-*   **Goal:** Decide if VoxTell is salvageable or if a pivot to the alternative pristine model is required.
+### Phase 1: Deep Data Profiling of ReXGroundingCT 🟢 ACTIVE
+* Perform comprehensive statistics on CT scans, 3D GT masks, and free-text prompts across all 200 validation cases.
+* Map ground truth masks to the 14 official challenge categories.
 
-### Phase 2: Micro-Experiments & Data-Centric Tweaks (August - September) - ⏳ PENDING
-*   **Experiment A:** Train VoxTell with standard DiceCE to measure exact degradation caused by suppression bias.
-*   **Experiment B:** Test thresholding, connected component filtering, or morphological operations.
-*   **Experiment C:** Naive pseudo-labeling using the baseline model to fill in missing annotations, followed by standard training.
+### Phase 2: VoxTell Zero-Shot Inference & Preprocessing Audit 🟢 ACTIVE
+* Benchmark VoxTell v1.1 on raw unmodified challenge prompts using official `NibabelIOWithReorient`.
+* Profile raw logit probability distributions and optimal binarization thresholds per category.
+* Perform fine-grained error analysis across the 14 categories.
 
-### Phase 3: Methodological Re-Evaluation (October) - ⏳ PENDING
-*   Re-evaluate Gao/Wolny (SPOCO/MPR) techniques. Implement one at a time if necessary. *(Note: We will revisit the archived `exp_002` and `exp_003` logs as reference for the Mean Teacher collapse and stabilization behaviors).*
-*   Explore simpler Positive-Unlabeled (PU) learning techniques as alternatives.
+### Phase 3: Fine-Tuning & Model Adaptations ⏳ POSTPONED
+* *Postponed until Data Analysis and Inference Audit are 100% completed and validated.*
+* Any future fine-tuning methods (standard supervised, Positive-Unlabeled, or consistency losses) will be formulated strictly as hypotheses to test step-by-step.
 
-### Phase 4: Scaling and Paper Writing (November - December) - ⏳ PENDING
-*   Scale the winning combination of micro-experiments to the full dataset on SLURM.
-*   Perform hyperparameter sweeps on the stabilized architecture.
-*   Draft the MICCAI paper centered on systematically evaluating partial-annotation solutions.
+---
+
+## 🚫 3. Archived Proof-of-Concept Code
+All previous exploratory Mean Teacher / SPOCO training scripts and logs are archived in:
+* **`scripts/archived_proof_of_concept/`**: Legacy training scripts (`train_mean_teacher.py`).
+* **`logs/experiments/archived_proof_of_concept/`**: Legacy experiment logs (`exp_002`, `exp_003`).
+* **`scratch/archived_proof_of_concept/`**: Legacy scratch scripts.
