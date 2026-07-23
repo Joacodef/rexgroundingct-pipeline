@@ -35,7 +35,9 @@ REX_PROJECT/
 ├── scripts/                    # Production pipeline scripts
 │   ├── data_analysis/          # Dataset statistics & spatial heatmap generators
 │   ├── data_prep/              # MONAI data preprocessing pipeline
-│   ├── voxtell/                # Zero-shot VoxTell inference pipeline
+│   ├── voxtell/                # VoxTell model training & inference pipelines
+│   │   ├── training/           # Production fine-tuning & trainer modules
+│   │   └── voxtell_inference.py# Zero-shot VoxTell inference pipeline
 │   └── evaluate.py             # Official challenge metric calculator
 └── README.md                   # Primary repository documentation
 ```
@@ -89,7 +91,13 @@ Run zero-shot inference across validation scans:
 CUDA_VISIBLE_DEVICES=1 ./.venv-voxtell/bin/python scripts/voxtell/voxtell_inference.py --split val --tile_step_size 0.5
 ```
 
-### 5. Fast Multi-Threaded Validation Metric Calculation
+### 5. Production Model Fine-Tuning
+Run persistent Mean Teacher fine-tuning on target GPU:
+```bash
+WANDB_MODE=offline PYTHONUNBUFFERED=1 nohup .venv-voxtell/bin/python -u scripts/voxtell/training/train_mean_teacher.py --epochs 50 --wandb > logs/train_mean_teacher_50ep.log 2>&1 &
+```
+
+### 6. Fast Multi-Threaded Validation Metric Calculation
 Compute primary ranking metrics (Average Dice, Hit Rate $\ge 0.1$, Empty Preds) across prediction volumes:
 ```bash
 PYTHONPATH=. CUDA_VISIBLE_DEVICES=1 ./.venv-voxtell/bin/python scratch/phase_2_inference_audit/fast_200_eval.py

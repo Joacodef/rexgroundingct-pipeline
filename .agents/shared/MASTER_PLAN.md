@@ -47,6 +47,6 @@
 ---
 
 ## 🔬 3. Phase 3 Fine-Tuning & Exploratory Proof-of-Concept Scripts
-Exploratory Mean Teacher / SPOCO training scripts and logs are organized in proof-of-concept subfolders:
-* **`logs/phase_3_fine_tuning/proof_of_concept/`**: Phase 3 proof-of-concept experiment logs (`exp_001`, `exp_002`).
-* **`scratch/phase_3_fine_tuning/proof_of_concept/`**: Phase 3 proof-of-concept training & evaluation scripts (`train_mean_teacher.py`, `evaluate_bucketed.py`).
+Exploratory fine-tuning scripts and logs are organized in phase-specific subfolders:
+* **`logs/phase_3_fine_tuning/proof_of_concept/`**: Phase 3 proof-of-concept experiment logs.
+* **`scratch/phase_3_fine_tuning/proof_of_concept/`**: Phase 3 proof-of-concept training and evaluation scripts.

@@ -108,7 +108,7 @@ By extracting raw probabilities on validation scan `train_13082_a_1`, we found t
 * **The Resolution**: We updated the custom workspace instructions in `.agents/AGENTS.md` to mandate persistent process execution going forward.
 * **Persistent Relaunch**: We relaunched the 50-epoch stabilized fine-tuning run on GPU 1 (Blackwell) persistently under `nohup` to ensure it survives IDE and workspace disconnections:
   ```bash
-  WANDB_MODE=offline PYTHONUNBUFFERED=1 nohup .venv-voxtell/bin/python -u scripts/voxtell/train_mean_teacher.py --epochs 50 --wandb > logs/train_mean_teacher_50ep.log 2>&1 &
+  WANDB_MODE=offline PYTHONUNBUFFERED=1 nohup .venv-voxtell/bin/python -u scripts/voxtell/training/train_mean_teacher.py --epochs 50 --wandb > logs/train_mean_teacher_50ep.log 2>&1 &
   ```
   Progress is being captured in `logs/train_mean_teacher_50ep.log` and offline Weights & Biases telemetry.
 

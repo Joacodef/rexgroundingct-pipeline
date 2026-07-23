@@ -17,6 +17,8 @@ import nibabel as nib
 from tqdm import tqdm
 from dotenv import load_dotenv
 
+import config
+
 def compute_dice(pred_mask, gt_mask):
     """Computes the Dice Coefficient between two binary masks."""
     pred_bool = pred_mask > 0
@@ -31,20 +33,14 @@ def compute_dice(pred_mask, gt_mask):
     return 2. * intersection / union
 
 def main():
-    load_dotenv(override=True)
     parser = argparse.ArgumentParser(description="Evaluate 4D predictions for ReXGroundingCT")
     
-    default_gt_dir = os.environ["SEG_RAW_DIR"]
-    
-    parser.add_argument("--gt_dir", type=str, default=default_gt_dir, help="Directory containing raw GT masks")
-    parser.add_argument("--pred_dir", type=str, default=os.environ["DATA_PRED_DIR"], help="Directory containing predicted masks")
-    parser.add_argument("--dataset_json", type=str, default=os.environ["DATASET_JSON"], help="Path to dataset.json")
+    parser.add_argument("--gt_dir", type=str, default=str(config.RAW_MASKS_DIR), help="Directory containing raw GT masks")
+    parser.add_argument("--pred_dir", type=str, default=str(config.PREDICTIONS_DIR), help="Directory containing predicted masks")
+    parser.add_argument("--dataset_json", type=str, default=str(config.DATASET_JSON), help="Path to dataset.json")
     
     # Derive the default output JSON based on the predictions directory
-    default_out_json = os.path.join(
-        os.path.dirname(os.environ["DATA_PRED_DIR"]), 
-        "eval_results.json"
-    )
+    default_out_json = str(config.DATA_DIR / "eval_results.json")
     
     parser.add_argument("--output_json", type=str, default=default_out_json, help="Path to save evaluation results")
     parser.add_argument("--split", type=str, default="val", help="Dataset split to evaluate")
