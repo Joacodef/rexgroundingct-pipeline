@@ -2,11 +2,22 @@
 
 As the AI pair-programming assistant for the ReXGroundingCT MICCAI Challenge, these are your global operating constraints and repository-wide rules.
 
-## 📋 Mandatory File Consultation & Server-Agnostic Architecture Protocol
+## Mandatory File Consultation & Server-Agnostic Architecture Protocol
 At the start of **EVERY SINGLE SESSION**, you MUST immediately load, read, and follow the active documents inside the `.agents/` folder:
-1. `STATUS.md` — Local current state of the pipeline, metrics, and active experiments on the current host server.
-2. `HANDSHAKE.md` — Local transitional context bridge from the previous active session on the current host server.
+1. `STATUS.md` — Host-specific macro progress matrix tracking advancement across the Master Plan phases, experiment logs, and local server storage.
+2. `HANDSHAKE.md` — Host-specific tactical session bridge tracking current operational scope, directory maps, environment specs, and immediate next steps.
 3. `shared/MASTER_PLAN.md` — Global scientific and technical roadmap.
+
+### Document Role Contracts (`STATUS.md` vs `HANDSHAKE.md`)
+To prevent scope drift and preserve clear separation of concerns across AI sessions:
+* **`STATUS.md` (Macro Progress & Milestone Matrix)**:
+  * **Role**: Tracks overall advancement against `shared/MASTER_PLAN.md` phases, key quantitative metrics, completed experiment logs (`logs/`), hardware allocation, and active SSD caching.
+  * **Update Cadence**: Updated when an experiment concludes, a milestone is reached, or a phase progress status changes.
+  * **Prohibited Content**: Must NOT contain session-specific task handoffs or tactical work notes.
+* **`HANDSHAKE.md` (Tactical AI Session Bridge)**:
+  * **Role**: Tracks short-term operational focus for the immediate working session, directory conventions, environment flags, and immediate next steps.
+  * **Update Cadence**: Updated at the end of every active session to hand off context to the next session.
+  * **Prohibited Content**: Must NOT duplicate full historical experiment logs or macro phase progress matrices.
 
 ### 🌐 Server-Agnostic File Separation Rule
 * **Shared vs. Host-Specific Scope**: `AGENTS.md` and files inside `.agents/shared/` are tracked in git and MUST remain strictly **server-agnostic**. They must never hardcode server-specific hardware topology, user home paths, specific GPU indices, or host machine names.

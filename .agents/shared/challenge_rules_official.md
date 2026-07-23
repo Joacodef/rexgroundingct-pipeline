@@ -1,6 +1,6 @@
 # Official Rules: ReXGroundingCT Challenge @ MICCAI 2026
 
-> Structured transcript of the official rules published at `https://rexrank.ai/ReXGroundingCT/challenge.html` and the submission guidelines at `https://rexrank.ai/explore/submission_guideline_ct.html`. Last verified: July 23, 2026. In case of any discrepancy with the official page, the official page takes precedence.
+> Structured transcript of the official rules published at `https://rexrank.ai/ReXGroundingCT/challenge.html`, the dataset overview at `https://rexrank.ai/ReXGroundingCT/index.html`, submission guidelines at `https://rexrank.ai/explore/submission_guideline_ct.html`, and arXiv preprint `arXiv:2507.22030`. Last verified: July 23, 2026. In case of any discrepancy with official pages, the official page takes precedence.
 
 ---
 
@@ -8,7 +8,7 @@
 
 The ReXGrounding Challenge is an official MICCAI 2026 challenge designed to evaluate models on the localization of radiological findings described in unrestricted natural language, producing precise 3D segmentation masks in volumetric thoracic CTs.
 
-Unlike previous challenges focused on lesion or organ segmentation by category, this benchmark requires models to interpret diverse clinical language — including anatomical descriptors, spatial relationships, and morphological attributes — and accurately anchor them in volumetric space. The dataset includes focal and diffuse abnormalities, covers a wide range of radiological patterns, and reflects real-world variability in how radiologists report.
+Unlike previous challenges focused on lesion or organ segmentation by predefined category labels, this benchmark requires models to interpret diverse clinical language — including anatomical descriptors, spatial relationships, and morphological attributes — and accurately anchor them in 3D volumetric space. The dataset includes focal and diffuse abnormalities, covers a wide range of radiological patterns, and reflects real-world variability in how radiologists report.
 
 The challenge is built on CT-RATE (a large-scale dataset of non-contrast thoracic CTs paired with free-text radiology reports), extended with expert-verified pixel-level 3D segmentations corresponding to individual findings from the reports.
 
@@ -16,18 +16,18 @@ Host: public leaderboard at `https://rexrank.ai/ReXGroundingCT/challenge.html`.
 
 ---
 
-## 2. Task
+## 2. Task & Category Ontology
 
 **Single task: free-text finding grounding.**
 
 Model input:
-- A thoracic CT volume.
-- A finding in natural language extracted from a radiology report.
+- A 3D thoracic CT volume.
+- A finding description in natural language extracted from a radiology report.
 
 Expected output:
 - A 3D segmentation mask corresponding to the description.
 
-### The 14 Categories
+### The 14 Official Finding Categories
 
 **Typically non-focal (6):**
 1. Bronchial wall thickening
@@ -49,19 +49,31 @@ Expected output:
 
 ---
 
-## 3. Dataset & Annotation Duality
+## 3. Dataset Pipeline, Statistics & Chain-of-Thought Resource
 
-| Split | Cases | Annotation Type | Description |
+### Dataset Provenance & Construction
+1. **Source Reports**: Reports originated from CT-RATE (originally written in Turkish, machine-translated to English).
+2. **Finding Extraction & Standardization**: GPT-4 was utilized to extract and standardize findings, descriptors, and metadata from the translated reports.
+3. **Hierarchical Ontology Categorization**: GPT-4o-mini categorized each finding into a hierarchical ontology of lung and pleural abnormalities.
+4. **3D Segmentation & Verification**:
+   - Training Set: Quality-assured by board-certified radiologists.
+   - Validation & Test Sets: Fully and exhaustively annotated by board-certified radiologists.
+5. **Overall Statistics**: Contains 16,301 annotated entities across 8,028 text-to-3D-segmentation pairs from 3,142 non-contrast CT scans (~79% focal abnormalities, ~21% non-focal abnormalities).
+
+### Complementary Chain-of-Thought (CoT) Dataset
+The authors provide a complementary **Chain-of-Thought (CoT) reasoning dataset** created using GPT-4o paired with 3D localization coordinates derived from organ segmentation models. This dataset provides step-by-step hierarchical anatomical reasoning for localizing findings within CT volumes, providing a structured textual resource for prompt engineering or reasoning-guided fine-tuning.
+
+### Dataset Splits
+
+| Split | Scans | Annotation Type | Description |
 |---|---|---|---|
 | Training | 2,992 CT scans | Partial | Up to 3 instances per finding annotated |
 | Validation | 200 CT scans | Exhaustive | All visible instances annotated by board-certified radiologists |
 | Test | 300 CT scans | Exhaustive | Held-out evaluation split (50% public / 50% private) |
 
-All annotations are pixel-level 3D masks linked to free-text findings extracted from radiology reports. The validation and test sets were annotated exclusively by board-certified radiologists.
-
 ### Note on Split Differences
-* **Paper Split**: 2,992 train / 50 val / 100 test (used in initial publication benchmark).
-* **MICCAI Challenge Split**: 2,992 train / 200 val / 300 test (expanded for official leaderboard).
+* **Paper Split (`arXiv:2507.22030`)**: 2,992 train / 50 val / 100 test (used in initial publication benchmark).
+* **MICCAI Challenge Split**: 2,992 train / 200 val / 300 test (expanded split for official leaderboard).
 
 ---
 
@@ -77,73 +89,75 @@ All annotations are pixel-level 3D masks linked to free-text findings extracted 
 
 ---
 
-## 5. Evaluation Metrics
+## 5. Evaluation Metrics & Leaderboard Table
 
 ### Primary Ranking Metric
-**Average Dice Coefficient (DSC)**: Computed per finding and per case.
+**Average Dice Coefficient (DSC)**: Computed per finding and per case across all target instances.
 
-### Overlap & Distance Metrics
+### Evaluation Metrics Suite
 
-| Metric | Threshold / Matching Criterion |
-|---|---|
-| Dice (Primary) | Average DSC per finding per case |
-| Hit Rate | Proportion of findings where global $Dice \ge 0.1$ |
-| Instance Precision | TP / (TP + FP), where TP requires predicted instance component $Dice \ge 0.2$ |
-| Instance Recall | TP / (TP + FN), with same $Dice \ge 0.2$ criterion |
-| Instance F1 | Harmonic mean of Instance Precision and Instance Recall |
-| Distance Precision | TP / (TP + FP), where TP requires ASSD (non-focal) or centroid distance (focal) $\le 2 \times \max(\text{voxel spacing})$ |
-| Distance Recall | TP / (TP + FN), with same distance criterion |
-| Distance F1 | Harmonic mean of Distance Precision and Distance Recall |
+| Metric | Displayed on Public Leaderboard | Threshold / Matching Criterion |
+|---|---|---|
+| Dice | Yes (Primary Rank Metric) | Average DSC per finding per case |
+| Hit Rate | Yes | Proportion of findings where global $Dice \ge 0.1$ |
+| Instance F1 | Yes | Harmonic mean of Instance Precision and Instance Recall ($Dice \ge 0.2$) |
+| Instance Precision | No (Detailed Breakdown) | TP / (TP + FP), where TP requires predicted instance component $Dice \ge 0.2$ |
+| Instance Recall | No (Detailed Breakdown) | TP / (TP + FN), with same $Dice \ge 0.2$ criterion |
+| Distance Precision | No (Detailed Breakdown) | TP / (TP + FP), where TP requires ASSD (non-focal) or centroid distance (focal) $\le 2 \times \max(\text{voxel spacing})$ |
+| Distance Recall | No (Detailed Breakdown) | TP / (TP + FN), with same distance criterion |
+| Distance F1 | No (Detailed Breakdown) | Harmonic mean of Distance Precision and Distance Recall |
+
+### Public Leaderboard Display & Category Breakdown
+* The main leaderboard table displays **Dice** (bolded primary metric), **Hit Rate**, and **Instance F1**.
+* Clicking any submission row on `rexrank.ai` reveals an interactive per-category metric breakdown across all 14 finding classes.
 
 ### Important Note on Hit Rate Threshold
-The official challenge Hit Rate uses **Dice $\ge$ 0.1** as the threshold. The VoxTell paper reports $HIT_{5\%}$ (threshold 0.05), which is different. Make sure local evaluation uses 0.1.
+The official challenge Hit Rate uses **Dice $\ge 0.1$** as the matching threshold. The VoxTell paper reports $HIT_{5\%}$ (threshold 0.05), which is different. Local evaluation loops in `scripts/evaluate.py` enforce the official 0.1 threshold.
 
 ---
 
 ## 6. Participation Rules
 
-1. **Pre-registration** via the official form on `rexrank.ai`.
-2. **Training data already available.** Method development can begin right away.
-3. **External data permitted.** Any public or private training data, including pre-trained models and external datasets, may be used. All external data sources must be described in the submission.
-4. **Fully automatic predictions.** All predictions on the test set must be generated automatically. The following are prohibited:
-   - Manual intervention.
-   - Post-hoc editing.
-   - Case-specific tuning.
-5. **During the development phase**, teams may evaluate on the val set and submit multiple runs. Only the final submission before the deadline is officially ranked.
+1. **Pre-registration** via the official registration panel on `rexrank.ai`.
+2. **Training data availability**: Method development and local benchmarking can proceed using available training and validation splits.
+3. **External data permitted**: Any public or private training data, including pre-trained foundation models and external datasets, may be used. All external data sources must be declared in the final submission report.
+4. **Fully automatic predictions**: All predictions on the test set must be generated automatically. Prohibited actions include:
+   - Manual intervention or human mask editing.
+   - Post-hoc manual threshold tuning per case.
+   - Non-reproducible case-specific heuristics.
+5. **Multiple submissions during development phase**: Teams may submit multiple runs to evaluate on the test split. Only the single best submission per team is officially ranked on the leaderboard.
 
 ---
 
 ## 7. Awards and Publication
 
 - The top 3 teams receive:
-  - Certificates.
-  - Invited oral / spotlight presentation at the challenge session.
+  - Official MICCAI award certificates.
+  - Invited oral / spotlight presentation at the MICCAI 2026 challenge session.
   - Recognition on the public leaderboard.
-  - Recognition in the post-challenge paper.
-- **Co-authorship in the challenge publication**: members of top-3 teams qualify, up to 8 authors per team.
-- **No embargo period**: all teams may publish their results independently without any time restriction.
+  - Recognition and co-authorship in the post-challenge overview paper.
+- **Co-authorship in the challenge publication**: Members of top-3 teams qualify, up to 8 authors per team.
+- **No embargo period**: Participating teams retain full rights to publish their methods and results independently without time restrictions.
 
 ---
 
 ## 8. Technical Submission Process
 
-### Prediction Format
-
+### Prediction Format & Packaging
 1. Run inference on the ReXGroundingCT test set (300 scans).
-2. Save predictions as individual NIfTI files (`.nii.gz`) with the **same names as the original CT files**.
-3. Each prediction file must have shape `(F, H, W, D)`, where:
-   - `F` = number of findings for that scan.
+2. Save predictions as individual NIfTI files (`.nii.gz`) with **names matching the original CT files**.
+3. Each prediction file must have 4D shape `(F, H, W, D)`, where:
+   - `F` = number of findings for that scan (matching the exact order in `dataset.json`).
    - `H, W, D` = spatial dimensions matching ground truth.
-4. Compress all 300 prediction files into a **single `.zip` file** (not a folder).
+4. Compress all 300 prediction NIfTI files into a **single `.zip` file** (do not compress a wrapper folder).
 
-### Web Submission Portal
+### Web Submission Portal Workflow
+Submissions are managed exclusively via the web portal at `https://rexrank.ai/ReXGroundingCT/challenge.html`:
 
-Submissions are managed directly via the web portal at `https://rexrank.ai/ReXGroundingCT/challenge.html`:
-
-1. **Account Setup**: Log in or create an account on rexrank.ai (verify via email).
-2. **Team Registration**: Register your team name, contact email, and member list (name and affiliation, up to 8 members).
-3. **File Upload**: Upload your prediction `.zip` file to **Google Drive** and set sharing permissions to *"Anyone with the link can view"*.
-4. **Submit**: Enter model name and the Google Drive link into the submission form.
+1. **Account Setup**: Log in or create an account on `rexrank.ai` (requires email verification; password min 6 characters). Note: Check spam/junk folders for verification emails.
+2. **Team Registration**: Register team name, contact email, and member list (each member must provide **Full Name** and **Affiliation**, max 8 members).
+3. **Google Drive File Upload**: Upload the single prediction `.zip` file to Google Drive and set sharing permissions to *"Anyone with the link can view"*.
+4. **Form Submission**: Select target split (`test`), enter **Model Name** (required), and provide the shareable Google Drive URL.
 
 ---
 
@@ -151,7 +165,7 @@ Submissions are managed directly via the web portal at `https://rexrank.ai/ReXGr
 
 * **Public Standings (50% Test Set)**: Live standings on the public leaderboard are calculated on a randomly selected **public 50% subset** of the 300 held-out test scans.
 * **Private Final Ranking (100% Test Set)**: The remaining **50% subset is withheld**. Final challenge placement is evaluated on the complete 100% test set and will be revealed at MICCAI 2026.
-* **Best Run Ranking**: Each team is ranked by their single best submission. Interactive category breakdowns for all 14 finding classes are accessible by clicking submission rows on the live table.
+* **Best Run Ranking**: Each team is ranked by their single best submission score.
 
 ---
 
@@ -174,7 +188,7 @@ General challenge contact: `MohammedSalimAB@outlook.com`
 - Dataset Overview: `https://rexrank.ai/ReXGroundingCT/index.html`
 - Submission Guidelines: `https://rexrank.ai/explore/submission_guideline_ct.html`
 - Dataset on HuggingFace: `https://huggingface.co/datasets/rajpurkarlab/ReXGroundingCT`
-- Official Evaluation Code: `https://huggingface.co/datasets/rajpurkarlab/ReXGroundingCT/blob/main/rexrank_eval.py`
+- Official Evaluation Script: `https://huggingface.co/datasets/rajpurkarlab/ReXGroundingCT/blob/main/rexrank_eval.py`
 - ReXGroundingCT Paper: `https://arxiv.org/abs/2507.22030`
 
 ---
@@ -208,6 +222,7 @@ General challenge contact: `MohammedSalimAB@outlook.com`
 ## 13. Critical Operational Implications
 
 1. **50% Public / 50% Private Leaderboard Split**: Leaderboard scores reflect only half the test set. Overfitting to the public 50% risks performance degradation on the final private evaluation. Solid local cross-validation is essential.
-2. **Output Format (F, H, W, D)**: Predictions must stack individual 3D finding segmentations into a single 4D volume per CT scan, maintaining exact correspondence with the GT finding sequence. Verify local outputs using `scripts/evaluate.py`.
-3. **Google Drive Submission Portal**: Predictions are submitted via a shared Google Drive link in the web portal rather than via email.
-4. **Co-authorship Limit**: Top-3 placement qualifies up to 8 team members for co-authorship on the official MICCAI challenge paper.
+2. **Chain-of-Thought (CoT) Prompting Leverage**: The availability of GPT-4o-generated CoT reasoning traces anchored to anatomical coordinates provides an additional textual grounding mechanism to experiment with during baseline fine-tuning.
+3. **Output Format (F, H, W, D)**: Predictions must stack individual 3D finding segmentations into a single 4D volume per CT scan, maintaining exact correspondence with the GT finding sequence. Verify local outputs using `scripts/evaluate.py`.
+4. **Google Drive Submission Portal**: Predictions are submitted via a shared Google Drive link in the web portal. Form fields require a designated Model Name and verified team members (Name + Affiliation).
+5. **Co-authorship Limit**: Top-3 placement qualifies up to 8 team members for co-authorship on the official MICCAI challenge paper.
